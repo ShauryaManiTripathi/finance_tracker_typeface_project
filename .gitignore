@@ -64,7 +64,6 @@ Thumbs.db
 .dockerignore
 
 # Uploads (temporary files)
-uploads/
 receipts/
 statements/
 temp_uploads/
