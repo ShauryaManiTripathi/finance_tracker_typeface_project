@@ -10,7 +10,7 @@
  * @module modules/uploads/routes
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -26,8 +26,32 @@ import {
   STATEMENT_MIME_TYPES,
 } from './upload.validators';
 import { config } from '../../config';
+import { HttpError } from '../../middleware/error';
 
 const router = Router();
+
+/**
+ * Multer error handler middleware
+ * Converts Multer errors to proper HTTP errors
+ */
+const handleMulterError = (err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return next(new HttpError(400, 'BadRequest', 'File too large'));
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return next(new HttpError(400, 'BadRequest', 'Unexpected file field'));
+    }
+    return next(new HttpError(400, 'BadRequest', err.message));
+  }
+  
+  // Non-Multer errors (e.g., from fileFilter)
+  if (err) {
+    return next(new HttpError(400, 'BadRequest', err.message));
+  }
+  
+  next();
+};
 
 // Ensure upload directories exist
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
@@ -127,6 +151,7 @@ router.post(
   '/receipt',
   authenticate,
   uploadReceipt.single('file'),
+  handleMulterError,
   uploadController.uploadReceipt
 );
 
@@ -145,6 +170,7 @@ router.post(
   '/statement',
   authenticate,
   uploadStatement.single('file'),
+  handleMulterError,
   uploadController.uploadStatement
 );
 

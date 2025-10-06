@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { prisma as prodPrisma } from '../db/prisma';
 
 // Load test environment variables
@@ -29,6 +31,36 @@ export async function resetDatabase() {
     await prismaTest.user.deleteMany();
   } catch (error) {
     console.error('Error resetting database:', error);
+  }
+}
+
+/**
+ * Clean up uploaded files from tests
+ */
+export function cleanupUploads() {
+  const receiptsDir = path.join(__dirname, '../uploads/receipts');
+  const statementsDir = path.join(__dirname, '../uploads/statements');
+  
+  // Clean receipts directory
+  if (fs.existsSync(receiptsDir)) {
+    const files = fs.readdirSync(receiptsDir);
+    files.forEach((file) => {
+      const filePath = path.join(receiptsDir, file);
+      if (fs.statSync(filePath).isFile()) {
+        fs.unlinkSync(filePath);
+      }
+    });
+  }
+  
+  // Clean statements directory
+  if (fs.existsSync(statementsDir)) {
+    const files = fs.readdirSync(statementsDir);
+    files.forEach((file) => {
+      const filePath = path.join(statementsDir, file);
+      if (fs.statSync(filePath).isFile()) {
+        fs.unlinkSync(filePath);
+      }
+    });
   }
 }
 
@@ -62,6 +94,7 @@ beforeAll(async () => {
  */
 beforeEach(async () => {
   await resetDatabase();
+  cleanupUploads();
 });
 
 /**

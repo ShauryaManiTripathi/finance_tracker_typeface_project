@@ -162,7 +162,7 @@ export async function commitReceipt(
     // Validated by middleware (commitReceiptSchema)
     const transaction = await uploadService.commitReceipt(req.body, userId);
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: transaction,
       message: 'Transaction created successfully',
@@ -200,7 +200,7 @@ export async function commitStatement(
     // Validated by middleware (commitStatementSchema)
     const result = await uploadService.commitStatement(req.body, userId);
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: result,
       message: `Successfully imported ${result.created} transaction(s). ${result.skipped > 0 ? `Skipped ${result.skipped} duplicate(s).` : ''}`,

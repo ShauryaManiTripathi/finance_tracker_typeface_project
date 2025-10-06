@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadAndExtract } from '../../utils/gemini';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
+import { HttpError } from '../../middleware/error';
 import type { CommitReceiptInput, CommitStatementInput, ReceiptPreview, StatementPreview } from './upload.validators';
 import { prisma } from '../../db/prisma';
 import type { TransactionType } from '@prisma/client';
@@ -391,15 +392,15 @@ export async function commitReceipt(input: CommitReceiptInput, userId: string) {
   });
 
   if (!preview) {
-    throw new Error('Preview not found or expired');
+    throw new HttpError(404, 'NotFound', 'Preview not found or expired');
   }
 
   if (preview.userId !== userId) {
-    throw new Error('Unauthorized: Preview belongs to another user');
+    throw new HttpError(403, 'Forbidden', 'Unauthorized: Preview belongs to another user');
   }
 
   if (preview.expiresAt < new Date()) {
-    throw new Error('Preview has expired. Please re-upload the receipt.');
+    throw new HttpError(410, 'Gone', 'Preview has expired. Please re-upload the receipt.');
   }
 
   // Step 2: Verify category exists and belongs to user
@@ -408,7 +409,7 @@ export async function commitReceipt(input: CommitReceiptInput, userId: string) {
   });
 
   if (!category || category.userId !== userId) {
-    throw new Error('Invalid category ID');
+    throw new HttpError(400, 'BadRequest', 'Invalid category ID');
   }
 
   // Step 3: Create transaction
@@ -461,15 +462,15 @@ export async function commitStatement(input: CommitStatementInput, userId: strin
   });
 
   if (!preview) {
-    throw new Error('Preview not found or expired');
+    throw new HttpError(404, 'NotFound', 'Preview not found or expired');
   }
 
   if (preview.userId !== userId) {
-    throw new Error('Unauthorized: Preview belongs to another user');
+    throw new HttpError(403, 'Forbidden', 'Unauthorized: Preview belongs to another user');
   }
 
   if (preview.expiresAt < new Date()) {
-    throw new Error('Preview has expired. Please re-upload the statement.');
+    throw new HttpError(410, 'Gone', 'Preview has expired. Please re-upload the statement.');
   }
 
   // Step 2: Verify all categories exist and belong to user
@@ -482,7 +483,7 @@ export async function commitStatement(input: CommitStatementInput, userId: strin
   });
 
   if (categories.length !== categoryIds.length) {
-    throw new Error('One or more invalid category IDs');
+    throw new HttpError(400, 'BadRequest', 'One or more invalid category IDs');
   }
 
   // Step 3: Optional deduplication (check for existing transactions on same dates)
@@ -564,17 +565,17 @@ export async function getPreview(previewId: string, userId: string) {
   });
 
   if (!preview) {
-    throw new Error('Preview not found or expired');
+    throw new HttpError(404, 'NotFound', 'Preview not found or expired');
   }
 
   if (preview.userId !== userId) {
-    throw new Error('Unauthorized: Preview belongs to another user');
+    throw new HttpError(403, 'Forbidden', 'Unauthorized: Preview belongs to another user');
   }
 
   if (preview.expiresAt < new Date()) {
     // Auto-delete expired preview
     await prisma.uploadPreview.delete({ where: { id: previewId } });
-    throw new Error('Preview has expired');
+    throw new HttpError(410, 'Gone', 'Preview has expired');
   }
 
   return preview;

@@ -38,7 +38,7 @@ export const transactionTypeSchema = z.enum(['INCOME', 'EXPENSE']);
  * User sends verified/edited data after previewing AI extraction
  */
 export const commitReceiptSchema = z.object({
-  previewId: z.string().uuid('Preview ID must be a valid UUID'),
+  previewId: z.string().min(1, 'Preview ID is required'), // Accept any non-empty string
   
   // Verified transaction data (may be edited from AI preview)
   transaction: z.object({
@@ -46,7 +46,7 @@ export const commitReceiptSchema = z.object({
     amount: z.number().positive('Amount must be positive'),
     description: z.string().min(1, 'Description is required').max(500),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-    categoryId: z.string().uuid('Category ID must be a valid UUID'),
+    categoryId: z.string().min(1, 'Category ID is required'), // Accept any string ID (CUID or UUID)
   }),
   
   // Optional metadata
@@ -62,7 +62,7 @@ export const commitReceiptSchema = z.object({
  * User sends verified/edited transactions after previewing AI extraction
  */
 export const commitStatementSchema = z.object({
-  previewId: z.string().uuid('Preview ID must be a valid UUID'),
+  previewId: z.string().min(1, 'Preview ID is required'), // Accept any non-empty string
   
   // Array of verified transactions (user may have edited/deleted some)
   transactions: z.array(
@@ -71,7 +71,7 @@ export const commitStatementSchema = z.object({
       amount: z.number().positive('Amount must be positive'),
       description: z.string().min(1, 'Description is required').max(500),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-      categoryId: z.string().uuid('Category ID must be a valid UUID'),
+      categoryId: z.string().min(1, 'Category ID is required'), // Accept any string ID (CUID or UUID)
     })
   ).min(1, 'At least one transaction is required'),
   
