@@ -8,9 +8,15 @@ pnpm-debug.log*
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
+
+# Keep example files
+!.env.example
+!.env.test
 
 # Database
 *.db
@@ -61,3 +67,9 @@ Thumbs.db
 uploads/
 receipts/
 statements/
+temp_uploads/
+*.tmp
+
+# Prisma
+prisma/.env
+apps/api/prisma/.env
