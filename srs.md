@@ -5,7 +5,26 @@ Author: You
 
 1) Introduction
 - Purpose
-  - Define complete functional and non-functional requirements for a full-stack Personal Finance Assistant that meets the assignment brief and includes bonus features. This SRS is implementation-oriented, specifying API contracts, data model, validations, UI, and an AI-assisted PDF import via Google Gemini.
+  - Define complete functional and non-functional requirements for a full-stack Personal Finance Assistant that meets the assignment brief and includes bonus features. This SRS is implementation-oriented, specify- Pagination: page >= 1; pageSize 1–100; default 20.
+
+Receipt Extraction via Gemini Vision
+- Gemini Model: gemini-2.0-flash-exp (default) or gemini-1.5-flash for cost optimization.
+- Vision API: Supports images (JPEG, PNG) and PDF files.
+- Structured Output: Use responseMimeType=application/json with schema defining:
+  - merchant: string (required)
+  - date: string in YYYY-MM-DD format (required)
+  - amount: number (required)
+  - currency: string (default "INR")
+  - description: string (optional, itemized list or category hint)
+  - confidence: object with per-field confidence scores 0-1 (optional)
+- Prompt Engineering:
+  - "You are a financial assistant. Extract transaction details from this receipt image."
+  - "Return JSON with merchant name, date (YYYY-MM-DD), total amount as a number, currency code (default INR), and a brief description."
+  - "If any field is unclear or missing, set it to null and indicate low confidence."
+- Fallback: If Gemini returns invalid JSON or extraction fails, return 422 with error message.
+- Privacy: Receipt images are processed by Gemini but not stored permanently; delete after extraction.
+
+AI Table Schema v1 (for Gemini and paste-import)ontracts, data model, validations, UI, and an AI-assisted PDF import via Google Gemini.
 
 - Scope
   - Users log income and expenses, categorize transactions, filter by date range, see summaries and charts, extract expenses from uploaded receipts (images/PDF), and import transaction histories from PDF statements using Gemini, with preview/edit/commit flow. Multi-user support and pagination included.
@@ -31,7 +50,7 @@ Author: You
 - Recommended Tech Stack (non-binding)
   - Backend: Node.js 18+, TypeScript, Express, PostgreSQL 14+, Prisma ORM, JWT auth, Zod/Ajv for validation, Multer for uploads.
   - Frontend: React + Vite + TypeScript, TailwindCSS, Recharts, Axios.
-  - OCR: Tesseract.js (images) and pdf-parse (PDF text layer). Gemini for statement PDFs.
+  - AI/Vision: Google Gemini (gemini-2.0-flash-exp or gemini-1.5-flash) for both receipt OCR and statement parsing via structured output.
 
 - Constraints & Assumptions
   - Default currency: INR (user-visible); DB stores currency string.
@@ -115,16 +134,24 @@ F6. Stats and Charts
 - Acceptance Criteria:
   - Correct aggregations respecting filters and user scope.
 
-F7. Receipt Extraction (Images/PDF)
-- Description: Upload a POS receipt; backend extracts text (OCR for images or PDF text layer), heuristically parses merchant/date/total to prefill an expense candidate.
+F7. Receipt Extraction (Images/PDF) via Gemini Vision
+- Description: Upload a POS receipt (image or PDF); backend uses Gemini Vision API to extract transaction data from the image, returning structured JSON with merchant, date, amount, and other details.
 - Inputs:
   - file: image/jpeg, image/png, application/pdf; max 10 MB.
 - Output:
-  - candidate transaction fields (type=EXPENSE, amount, occurredAt, merchant, description, source=RECEIPT) and rawText.
+  - candidate transaction fields (type=EXPENSE, amount, occurredAt, merchant, description, source=RECEIPT) in structured JSON format.
+  - confidence scores for extracted fields (optional).
+- Process:
+  - Upload image/PDF to Gemini File API or use inline base64.
+  - Call Gemini with vision prompt requesting structured JSON output.
+  - Use responseMimeType=application/json with schema defining transaction fields.
+  - Validate and normalize extracted data.
 - Acceptance Criteria:
-  - If parsing partially fails, return candidate with nulls plus rawText; user can edit and save.
+  - Extracts merchant, date, amount, and description with high accuracy.
+  - If extraction fails or confidence is low, return partial candidate with nulls; user can edit and save.
+  - Handles poor image quality, rotated images, and various receipt formats.
 - Errors:
-  - 415 unsupported type; 422 if unreadable; 500 OCR failure.
+  - 415 unsupported type; 422 if unreadable; 500 Gemini API failure.
 
 F8. Statement Import via Gemini (Bonus)
 - Description: Users upload a PDF statement; backend uses Gemini (gemini-1.5-flash or -pro) to return a strict JSON table that the app validates, normalizes, previews, and then commits.
@@ -271,11 +298,29 @@ Common Status Codes
   - Query: startDate?, endDate?, interval=daily|weekly|monthly (default daily)
   - 200: [{ dateKey: "YYYY-MM-DD"|"YYYY-WW"|"YYYY-MM", income, expenses, net }]
 
-6.6 Uploads: Receipts (auth required)
+6.6 Uploads: Receipts (auth required) - Gemini Vision
 - POST /uploads/receipt
   - multipart/form-data: file (image/jpeg|image/png|application/pdf), max 10 MB
-  - 200: { candidate: { type, amount?, currency, occurredAt, merchant?, description, source: "RECEIPT" }, rawText: string }
-  - 415, 422, 500 on error
+  - query: model=flash|flash-exp (optional, default: gemini-2.0-flash-exp)
+  - Behavior:
+    - Upload image to Gemini File API or use inline base64 (if < 4MB).
+    - Call Gemini Vision with prompt: "Extract transaction details from this receipt. Return JSON with: merchant, date (YYYY-MM-DD), amount (number), currency, description, and confidence (0-1) for each field."
+    - Use responseMimeType=application/json with schema.
+    - Validate and normalize extracted fields.
+  - 200: { 
+      candidate: { 
+        type: "EXPENSE", 
+        amount: number, 
+        currency: string, 
+        occurredAt: ISO date string, 
+        merchant: string, 
+        description: string,
+        source: "RECEIPT" 
+      },
+      confidence?: { merchant: 0.95, amount: 0.98, date: 0.92 },
+      rawText?: string (optional, for debugging)
+    }
+  - 415 (unsupported type), 422 (unreadable/extraction failed), 500 (Gemini error), 502 (Gemini timeout)
 
 6.7 AI Statement Import (Gemini) (auth required)
 - POST /imports/ai/from-pdf
@@ -619,9 +664,10 @@ Charts
 
 17) Glossary
 - JWT: JSON Web Token for authentication.
-- OCR: Optical Character Recognition.
+- Gemini Vision: Google's multimodal AI model capable of understanding images, PDFs, and extracting structured data.
 - AI Table Schema v1: JSON structure produced by Gemini for statement rows.
 - Idempotency Key: Client-supplied unique token to ensure a commit operation is not executed twice.
+- Structured Output: Gemini's responseMimeType=application/json feature enforcing a specific JSON schema in responses.
 
 Appendix A: Example API Contracts
 - POST /transactions
