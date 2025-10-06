@@ -19,8 +19,10 @@ Authorization: Bearer <jwt_token>
 1. [Authentication Endpoints](#authentication-endpoints)
 2. [Category Endpoints](#category-endpoints)
 3. [Transaction Endpoints](#transaction-endpoints)
-4. [Common Response Formats](#common-response-formats)
-5. [Error Codes](#error-codes)
+4. [Statistics Endpoints](#statistics-endpoints)
+5. [Upload Endpoints](#upload-endpoints)
+6. [Common Response Formats](#common-response-formats)
+7. [Error Codes](#error-codes)
 
 ---
 
@@ -941,6 +943,406 @@ Retrieve income and expenses aggregated over time with specified interval.
 
 ---
 
+## Upload Endpoints
+
+### POST /uploads/receipt
+Upload a receipt image and extract transaction data using AI.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /api/uploads/receipt` |
+| **Authentication** | Required (JWT) |
+| **Content-Type** | `multipart/form-data` |
+
+#### Request Body (Multipart Form Data)
+| Field | Type | Required | Validation | Description |
+|-------|------|----------|------------|-------------|
+| `file` | File | Yes | JPEG/PNG/WebP, max 10MB | Receipt image file |
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "previewId": "550e8400-e29b-41d4-a716-446655440000",
+    "type": "receipt",
+    "extractedData": {
+      "merchant": "Starbucks Coffee",
+      "date": "2025-10-07",
+      "amount": 450.00,
+      "currency": "INR",
+      "description": "Cappuccino, Croissant",
+      "confidence": 0.95
+    },
+    "suggestedTransaction": {
+      "type": "EXPENSE",
+      "amount": 450.00,
+      "description": "Purchase at Starbucks Coffee",
+      "date": "2025-10-07",
+      "categoryId": "cat_food_12345"
+    },
+    "expiresAt": "2025-10-07T14:45:00.000Z",
+    "createdAt": "2025-10-07T14:30:00.000Z"
+  },
+  "message": "Receipt processed successfully. Please review and confirm the extracted data."
+}
+```
+
+**Notes:**
+- Uses Google Gemini Vision API for OCR
+- Preview expires in 15 minutes (TTL)
+- Category is auto-suggested based on merchant/description
+- User should verify/edit data before committing
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | No file uploaded | `{ "error": "Bad Request", "message": "No file uploaded" }` |
+| 400 | Invalid file type | `{ "error": "Bad Request", "message": "Invalid file type..." }` |
+| 400 | File too large | `{ "error": "Bad Request", "message": "File too large..." }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+| 500 | AI extraction failed | `{ "error": "Internal Server Error", "message": "Failed to extract receipt data..." }` |
+
+---
+
+### POST /uploads/statement
+Upload a bank statement PDF and extract multiple transactions using AI.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /api/uploads/statement` |
+| **Authentication** | Required (JWT) |
+| **Content-Type** | `multipart/form-data` |
+
+#### Request Body (Multipart Form Data)
+| Field | Type | Required | Validation | Description |
+|-------|------|----------|------------|-------------|
+| `file` | File | Yes | PDF, max 20MB | Bank statement PDF file |
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "previewId": "660e8400-e29b-41d4-a716-446655440111",
+    "type": "statement",
+    "extractedData": {
+      "accountInfo": {
+        "accountNumber": "****1234",
+        "accountHolder": "John Doe",
+        "statementPeriod": {
+          "from": "2025-09-01",
+          "to": "2025-09-30"
+        }
+      },
+      "transactions": [
+        {
+          "date": "2025-09-05",
+          "description": "Salary Credit",
+          "amount": 50000.00,
+          "type": "INCOME",
+          "balance": 55000.00
+        },
+        {
+          "date": "2025-09-10",
+          "description": "Amazon Purchase",
+          "amount": 2500.00,
+          "type": "EXPENSE",
+          "balance": 52500.00
+        }
+      ],
+      "summary": {
+        "totalIncome": 50000.00,
+        "totalExpenses": 8500.00,
+        "transactionCount": 25
+      }
+    },
+    "suggestedTransactions": [
+      {
+        "type": "INCOME",
+        "amount": 50000.00,
+        "description": "Salary Credit",
+        "date": "2025-09-05",
+        "categoryId": "cat_salary_98765"
+      },
+      {
+        "type": "EXPENSE",
+        "amount": 2500.00,
+        "description": "Amazon Purchase",
+        "date": "2025-09-10",
+        "categoryId": "cat_shopping_54321"
+      }
+    ],
+    "expiresAt": "2025-10-07T14:45:00.000Z",
+    "createdAt": "2025-10-07T14:30:00.000Z"
+  },
+  "message": "Statement processed successfully. Found 25 transactions. Please review before importing."
+}
+```
+
+**Notes:**
+- Extracts ALL transactions from statement PDF
+- Categories auto-suggested for each transaction
+- Preview expires in 15 minutes
+- Supports deduplication on commit
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | No file uploaded | `{ "error": "Bad Request", "message": "No file uploaded" }` |
+| 400 | Invalid file type (not PDF) | `{ "error": "Bad Request", "message": "Invalid file type..." }` |
+| 400 | File too large | `{ "error": "Bad Request", "message": "File too large..." }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+| 500 | AI extraction failed | `{ "error": "Internal Server Error", "message": "Failed to extract statement data..." }` |
+
+---
+
+### POST /uploads/receipt/commit
+Commit a verified receipt transaction to the database.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /api/uploads/receipt/commit` |
+| **Authentication** | Required (JWT) |
+| **Content-Type** | `application/json` |
+
+#### Request Body
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `previewId` | string (UUID) | Yes | Preview ID from upload response |
+| `transaction` | object | Yes | Transaction data |
+| `transaction.type` | string | Yes | `INCOME` or `EXPENSE` |
+| `transaction.amount` | number | Yes | Transaction amount (positive) |
+| `transaction.description` | string | Yes | Transaction description |
+| `transaction.date` | string | Yes | Date in YYYY-MM-DD format |
+| `transaction.categoryId` | string | Yes | Category ID (must exist) |
+| `metadata` | object | No | Additional metadata (merchant, currency, etc.) |
+
+#### Example Request
+```json
+{
+  "previewId": "550e8400-e29b-41d4-a716-446655440000",
+  "transaction": {
+    "type": "EXPENSE",
+    "amount": 450.00,
+    "description": "Starbucks Coffee - Morning Snack",
+    "date": "2025-10-07",
+    "categoryId": "cat_food_12345"
+  },
+  "metadata": {
+    "merchant": "Starbucks Coffee",
+    "currency": "INR",
+    "aiConfidence": 0.95
+  }
+}
+```
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "id": "txn_123456789",
+    "type": "EXPENSE",
+    "amount": "450.00",
+    "description": "Starbucks Coffee - Morning Snack",
+    "occurredAt": "2025-10-07T00:00:00.000Z",
+    "categoryId": "cat_food_12345",
+    "category": {
+      "id": "cat_food_12345",
+      "name": "Food",
+      "type": "EXPENSE"
+    },
+    "userId": "user_abc123",
+    "createdAt": "2025-10-07T14:35:00.000Z",
+    "updatedAt": "2025-10-07T14:35:00.000Z"
+  },
+  "message": "Transaction created successfully"
+}
+```
+
+**Notes:**
+- Preview is automatically deleted after successful commit
+- Preview must not be expired (15-minute TTL)
+- Category must exist and belong to user
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Validation error | `{ "error": "Validation Error", "details": [...] }` |
+| 400 | Invalid category ID | `{ "error": "Bad Request", "message": "Invalid category ID" }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+| 404 | Preview not found | `{ "error": "Not Found", "message": "Preview not found or expired" }` |
+| 403 | Preview belongs to other user | `{ "error": "Forbidden", "message": "Unauthorized: Preview belongs to another user" }` |
+| 410 | Preview expired | `{ "error": "Gone", "message": "Preview has expired. Please re-upload the receipt." }` |
+
+---
+
+### POST /uploads/statement/commit
+Commit verified statement transactions to the database (bulk import).
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /api/uploads/statement/commit` |
+| **Authentication** | Required (JWT) |
+| **Content-Type** | `application/json` |
+
+#### Request Body
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `previewId` | string (UUID) | Yes | Preview ID from upload response |
+| `transactions` | array | Yes | Array of transaction objects |
+| `transactions[].type` | string | Yes | `INCOME` or `EXPENSE` |
+| `transactions[].amount` | number | Yes | Transaction amount (positive) |
+| `transactions[].description` | string | Yes | Transaction description |
+| `transactions[].date` | string | Yes | Date in YYYY-MM-DD format |
+| `transactions[].categoryId` | string | Yes | Category ID (must exist) |
+| `options` | object | No | Import options |
+| `options.skipDuplicates` | boolean | No | Skip duplicate transactions (default: true) |
+
+#### Example Request
+```json
+{
+  "previewId": "660e8400-e29b-41d4-a716-446655440111",
+  "transactions": [
+    {
+      "type": "INCOME",
+      "amount": 50000.00,
+      "description": "Salary Credit",
+      "date": "2025-09-05",
+      "categoryId": "cat_salary_98765"
+    },
+    {
+      "type": "EXPENSE",
+      "amount": 2500.00,
+      "description": "Amazon Purchase",
+      "date": "2025-09-10",
+      "categoryId": "cat_shopping_54321"
+    }
+  ],
+  "options": {
+    "skipDuplicates": true
+  }
+}
+```
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "created": 23,
+    "skipped": 2,
+    "total": 25
+  },
+  "message": "Successfully imported 23 transaction(s). Skipped 2 duplicate(s)."
+}
+```
+
+**Notes:**
+- Preview automatically deleted after successful commit
+- Deduplication checks date + amount + description (exact match)
+- All categories must exist and belong to user
+- Transactions validated individually before bulk create
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Validation error | `{ "error": "Validation Error", "details": [...] }` |
+| 400 | Invalid category IDs | `{ "error": "Bad Request", "message": "One or more invalid category IDs" }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+| 404 | Preview not found | `{ "error": "Not Found", "message": "Preview not found or expired" }` |
+| 403 | Preview belongs to other user | `{ "error": "Forbidden", "message": "Unauthorized: Preview belongs to another user" }` |
+| 410 | Preview expired | `{ "error": "Gone", "message": "Preview has expired. Please re-upload the statement." }` |
+
+---
+
+### GET /uploads/previews
+List all active previews for the authenticated user.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `GET /api/uploads/previews` |
+| **Authentication** | Required (JWT) |
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | string | No | Filter by type: `receipt` or `statement` |
+| `page` | number | No | Page number (default: 1) |
+| `pageSize` | number | No | Items per page (default: 20) |
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "userId": "user_abc123",
+      "type": "receipt",
+      "data": { /* full extracted data */ },
+      "expiresAt": "2025-10-07T14:45:00.000Z",
+      "createdAt": "2025-10-07T14:30:00.000Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+**Notes:**
+- Only returns non-expired previews
+- Sorted by creation date (newest first)
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+
+---
+
+### GET /uploads/previews/:id
+Retrieve a specific preview by ID.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `GET /api/uploads/previews/:id` |
+| **Authentication** | Required (JWT) |
+
+#### URL Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string (UUID) | Preview ID |
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "userId": "user_abc123",
+    "type": "receipt",
+    "data": { /* full extracted data */ },
+    "expiresAt": "2025-10-07T14:45:00.000Z",
+    "createdAt": "2025-10-07T14:30:00.000Z"
+  }
+}
+```
+
+**Notes:**
+- Auto-deletes if expired when accessed
+- Can only access own previews
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+| 403 | Preview belongs to other user | `{ "error": "Forbidden", "message": "Unauthorized: Preview belongs to another user" }` |
+| 404 | Preview not found | `{ "error": "Not Found", "message": "Preview not found or expired" }` |
+| 410 | Preview expired | `{ "error": "Gone", "message": "Preview has expired" }` |
+
+---
+
 ## Future Endpoints (Not Yet Implemented)
 
 The following endpoints are planned but not yet available:
@@ -954,4 +1356,13 @@ The following endpoints are planned but not yet available:
 
 **Last Updated:** October 7, 2025  
 **API Version:** 1.0.0  
-**Test Coverage:** 140 tests passing
+**Test Coverage:** 140 tests passing  
+**Modules:** Auth, Categories, Transactions, Statistics, Uploads
+
+**AI Features:**
+- Receipt OCR via Google Gemini Vision API
+- Bank Statement extraction via Gemini Multimodal
+- Automatic category suggestions
+- Preview/verify/commit workflow
+
+````
