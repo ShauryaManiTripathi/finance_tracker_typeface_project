@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
+import categoryRoutes from '../modules/categories/category.routes';
 
 const router = Router();
 
@@ -15,13 +16,12 @@ router.get('/health', (req, res) => {
 // Auth routes - implemented
 router.use('/auth', authRoutes);
 
+// Category routes - implemented
+router.use('/categories', categoryRoutes);
+
 // Placeholder routes - will be implemented in subsequent steps
 router.use('/transactions', (req, res) => {
   res.status(501).json({ error: 'NotImplemented', message: 'Transaction routes not implemented yet' });
-});
-
-router.use('/categories', (req, res) => {
-  res.status(501).json({ error: 'NotImplemented', message: 'Category routes not implemented yet' });
 });
 
 router.use('/stats', (req, res) => {
