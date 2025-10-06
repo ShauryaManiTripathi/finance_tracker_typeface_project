@@ -20,6 +20,27 @@ services:
       timeout: 10s
       retries: 5
 
+  postgres-test:
+    image: postgres:14-alpine
+    container_name: finance-postgres-test
+    environment:
+      POSTGRES_DB: finance_db_test
+      POSTGRES_USER: finance_user_test
+      POSTGRES_PASSWORD: finance_password_test
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance_user_test -d finance_db_test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   postgres_data:
+    driver: local
+  postgres_test_data:
     driver: local

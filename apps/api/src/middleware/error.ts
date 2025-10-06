@@ -59,7 +59,6 @@ export const errorHandler = (
     const details = error.errors.map((err) => ({
       field: err.path.join('.'),
       message: err.message,
-      value: err.input,
     }));
 
     res.status(400).json({

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import authRoutes from '../modules/auth/auth.routes';
 
 const router = Router();
 
@@ -11,11 +12,10 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Placeholder routes - will be implemented in subsequent steps
-router.use('/auth', (req, res) => {
-  res.status(501).json({ error: 'NotImplemented', message: 'Auth routes not implemented yet' });
-});
+// Auth routes - implemented
+router.use('/auth', authRoutes);
 
+// Placeholder routes - will be implemented in subsequent steps
 router.use('/transactions', (req, res) => {
   res.status(501).json({ error: 'NotImplemented', message: 'Transaction routes not implemented yet' });
 });

@@ -8,47 +8,14 @@ declare global {
 
 // Prevent multiple instances of Prisma Client in development
 const prisma = globalThis.__prisma || new PrismaClient({
-  log: [
-    {
-      emit: 'event',
-      level: 'query',
-    },
-    {
-      emit: 'event',
-      level: 'error',
-    },
-    {
-      emit: 'event',
-      level: 'info',
-    },
-    {
-      emit: 'event',
-      level: 'warn',
-    },
-  ],
+  log: process.env.NODE_ENV === 'development' 
+    ? ['query', 'error', 'warn']
+    : ['error'],
 });
 
 // Log database queries in development
 if (process.env.NODE_ENV === 'development') {
-  prisma.$on('query', (e: any) => {
-    logger.debug({
-      query: e.query,
-      params: e.params,
-      duration: `${e.duration}ms`,
-    }, 'Database query');
-  });
-
-  prisma.$on('error', (e: any) => {
-    logger.error({ target: e.target }, 'Database error');
-  });
-
-  prisma.$on('info', (e: any) => {
-    logger.info({ message: e.message }, 'Database info');
-  });
-
-  prisma.$on('warn', (e: any) => {
-    logger.warn({ message: e.message }, 'Database warning');
-  });
+  // Prisma logging is handled through the log option above
 }
 
 if (process.env.NODE_ENV === 'development') {
