@@ -1,28 +1,317 @@
 # Personal Finance Assistant - API Documentation
 
-## Base URL
+**Version:** 1.0.0  
+**Last Updated:** October 7, 2025  
+**Test Coverage:** 187/187 tests passing ✅
+
+---
+
+## 🚀 Quick Start
+
+### Base URL
 ```
-http://localhost:3001/api
+Development: http://localhost:3001/api
+Production: https://your-domain.com/api
 ```
 
-## Authentication
+### Authentication
 All endpoints except `/auth/register` and `/auth/login` require JWT authentication.
 
 **Header Format:**
-```
+```http
 Authorization: Bearer <jwt_token>
 ```
+
+**Token Expiration:** 7 days (configurable)
+
+### Content Types
+- **Standard requests:** `application/json`
+- **File uploads:** `multipart/form-data`
+
+### Response Format
+All responses follow this structure:
+```json
+{
+  "success": true,
+  "data": { /* response data */ },
+  "message": "Optional success message"
+}
+```
+
+### Error Format
+```json
+{
+  "success": false,
+  "error": "Error Type",
+  "message": "Human-readable error message",
+  "details": [ /* Optional validation errors */ ],
+  "traceId": "uuid-for-debugging"
+}
+```
+
+### Rate Limiting
+- **Gemini API calls:** ~50 requests/minute (shared across all users)
+- **Standard endpoints:** No hard limit (consider implementing)
+
+### File Upload Limits
+- **Receipts:** 10 MB (JPEG, PNG, WebP)
+- **Statements:** 20 MB (PDF only)
+
+---
+
+## 🏗️ Architecture Overview
+
+### Module Structure
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│    Auth     │────▶│  Categories  │────▶│Transactions │
+│  (Users)    │     │   (Budget)   │     │  (Records)  │
+└─────────────┘     └──────────────┘     └─────────────┘
+                                                 │
+                    ┌─────────────┐             │
+                    │    Stats    │◀────────────┘
+                    │ (Analytics) │
+                    └─────────────┘
+                           │
+                    ┌─────────────┐
+                    │   Uploads   │
+                    │ (AI Extract)│
+                    └─────────────┘
+```
+
+### Data Flow: Upload Module (AI-Powered)
+```
+1. Upload File
+   └─▶ POST /uploads/receipt or /uploads/statement
+       └─▶ Multer validates file (type, size)
+           └─▶ Gemini File API processes document
+               └─▶ AI extracts structured data
+                   └─▶ Preview saved (15-min TTL)
+                       └─▶ Return preview to frontend
+
+2. User Reviews/Edits Preview
+   └─▶ Frontend shows extracted data
+       └─▶ User can modify amounts, descriptions, categories
+           └─▶ Optional: GET /uploads/previews/:id to re-fetch
+
+3. Commit to Database
+   └─▶ POST /uploads/receipt/commit or /statement/commit
+       └─▶ Validate preview exists & not expired
+           └─▶ Validate category ownership
+               └─▶ Create transaction(s)
+                   └─▶ Delete preview (cleanup)
+                       └─▶ Return transaction(s)
+```
+
+### AI Features Powered by Google Gemini
+- **Receipt OCR:** Extract merchant, date, amount, description from images
+- **Statement Parsing:** Extract all transactions from PDF bank statements
+- **Category Suggestions:** Smart matching based on merchant/description keywords
+- **Confidence Scores:** AI confidence levels for data quality assessment
+- **Structured Output:** JSON schema enforcement for reliable parsing
 
 ---
 
 ## 📋 Table of Contents
-1. [Authentication Endpoints](#authentication-endpoints)
-2. [Category Endpoints](#category-endpoints)
-3. [Transaction Endpoints](#transaction-endpoints)
-4. [Statistics Endpoints](#statistics-endpoints)
-5. [Upload Endpoints](#upload-endpoints)
-6. [Common Response Formats](#common-response-formats)
-7. [Error Codes](#error-codes)
+1. [Getting Started Guide](#getting-started-guide)
+2. [Authentication Endpoints](#authentication-endpoints)
+3. [Category Endpoints](#category-endpoints)
+4. [Transaction Endpoints](#transaction-endpoints)
+5. [Statistics Endpoints](#statistics-endpoints)
+6. [Upload Endpoints](#upload-endpoints)
+7. [Common Response Formats](#common-response-formats)
+8. [Error Codes](#error-codes)
+9. [Best Practices](#best-practices)
+10. [Code Examples](#code-examples)
+
+---
+
+## 🎯 Getting Started Guide
+
+### Step 1: Register a User
+```bash
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepass123"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": "clxxx...", "email": "user@example.com" },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+💡 **Save the token!** You'll need it for all subsequent requests.
+
+---
+
+### Step 2: Create Categories
+Before adding transactions, create categories to organize your finances.
+
+```bash
+# Create Income Category
+curl -X POST http://localhost:3001/api/categories \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Salary",
+    "type": "INCOME"
+  }'
+
+# Create Expense Categories
+curl -X POST http://localhost:3001/api/categories \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Food",
+    "type": "EXPENSE"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cat_abc123",
+    "name": "Salary",
+    "type": "INCOME",
+    "userId": "user_xyz",
+    "createdAt": "2025-10-07T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### Step 3: Add Transactions (3 Methods)
+
+#### Method A: Manual Entry
+```bash
+curl -X POST http://localhost:3001/api/transactions \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "INCOME",
+    "amount": 50000,
+    "description": "Monthly Salary",
+    "occurredAt": "2025-10-01",
+    "categoryId": "cat_salary_123"
+  }'
+```
+
+#### Method B: Receipt Upload (AI-Powered)
+```bash
+# 1. Upload receipt image
+curl -X POST http://localhost:3001/api/uploads/receipt \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@receipt.jpg"
+
+# Response includes AI-extracted data and previewId
+# {
+#   "previewId": "preview_xyz",
+#   "extractedData": {
+#     "merchant": "Starbucks",
+#     "amount": 450,
+#     "date": "2025-10-07"
+#   }
+# }
+
+# 2. Review and commit
+curl -X POST http://localhost:3001/api/uploads/receipt/commit \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "previewId": "preview_xyz",
+    "transaction": {
+      "type": "EXPENSE",
+      "amount": 450,
+      "description": "Coffee at Starbucks",
+      "date": "2025-10-07",
+      "categoryId": "cat_food_456"
+    }
+  }'
+```
+
+#### Method C: Bank Statement Import (AI-Powered)
+```bash
+# 1. Upload bank statement PDF
+curl -X POST http://localhost:3001/api/uploads/statement \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@statement.pdf"
+
+# Response includes all extracted transactions
+# {
+#   "previewId": "preview_abc",
+#   "extractedData": {
+#     "transactions": [
+#       { "date": "2025-09-05", "amount": 50000, "description": "Salary", "type": "INCOME" },
+#       { "date": "2025-09-10", "amount": 2500, "description": "Amazon", "type": "EXPENSE" }
+#     ],
+#     "summary": { "totalIncome": 50000, "totalExpenses": 8500, "transactionCount": 25 }
+#   }
+# }
+
+# 2. Review, edit, and commit
+curl -X POST http://localhost:3001/api/uploads/statement/commit \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "previewId": "preview_abc",
+    "transactions": [
+      { "type": "INCOME", "amount": 50000, "description": "Salary", "date": "2025-09-05", "categoryId": "cat_salary" },
+      { "type": "EXPENSE", "amount": 2500, "description": "Amazon Purchase", "date": "2025-09-10", "categoryId": "cat_shopping" }
+    ],
+    "options": { "skipDuplicates": true }
+  }'
+```
+
+---
+
+### Step 4: View Analytics
+```bash
+# Get monthly summary
+curl -X GET "http://localhost:3001/api/stats/summary?startDate=2025-10-01&endDate=2025-10-31" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get spending by category
+curl -X GET "http://localhost:3001/api/stats/expenses-by-category?startDate=2025-10-01&endDate=2025-10-31" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get income/expenses over time (daily/weekly/monthly)
+curl -X GET "http://localhost:3001/api/stats/expenses-over-time?interval=daily&startDate=2025-10-01&endDate=2025-10-31" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+### Typical User Journey
+
+```
+Day 1: Setup
+├─ Register account
+├─ Create categories (Salary, Food, Transport, Shopping, etc.)
+└─ Add initial balance transactions
+
+Day 2-30: Daily Usage
+├─ Option 1: Take photo of receipt → AI extracts → Review → Commit
+├─ Option 2: Manually add transactions via API/app
+└─ View daily/weekly stats
+
+Month End:
+├─ Upload bank statement PDF → AI extracts all transactions
+├─ Review for duplicates (auto-skip enabled)
+├─ Commit verified transactions
+└─ View monthly analytics and trends
+```
 
 ---
 
@@ -1343,6 +1632,847 @@ Retrieve a specific preview by ID.
 
 ---
 
+## 🎯 Best Practices
+
+### Authentication & Security
+
+#### 1. Token Storage
+```javascript
+// ❌ DON'T: Store token in localStorage (XSS vulnerable)
+localStorage.setItem('token', token);
+
+// ✅ DO: Store in httpOnly cookies or secure storage
+// Backend sets: Set-Cookie: token=xxx; HttpOnly; Secure; SameSite=Strict
+
+// For mobile apps: Use secure encrypted storage
+import AsyncStorage from '@react-native-async-storage/async-storage';
+await AsyncStorage.setItem('@auth_token', token);
+```
+
+#### 2. Token Refresh
+```javascript
+// Check token expiration before requests
+function isTokenExpired(token) {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  return Date.now() >= payload.exp * 1000;
+}
+
+// Refresh if needed (implement refresh token endpoint)
+if (isTokenExpired(token)) {
+  token = await refreshToken();
+}
+```
+
+#### 3. Secure API Calls
+```javascript
+// Create axios instance with interceptors
+const api = axios.create({
+  baseURL: 'http://localhost:3001/api',
+  timeout: 30000, // 30s for file uploads
+});
+
+api.interceptors.request.use((config) => {
+  const token = getToken(); // from secure storage
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired - redirect to login
+      redirectToLogin();
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+### File Upload Optimization
+
+#### 1. Image Compression Before Upload
+```javascript
+// Compress receipt images to reduce upload time and costs
+import imageCompression from 'browser-image-compression';
+
+async function uploadReceipt(file) {
+  // Compress image before upload
+  const options = {
+    maxSizeMB: 1, // Max 1MB
+    maxWidthOrHeight: 1920,
+    useWebWorker: true,
+  };
+  
+  const compressedFile = await imageCompression(file, options);
+  
+  const formData = new FormData();
+  formData.append('file', compressedFile);
+  
+  return api.post('/uploads/receipt', formData);
+}
+```
+
+#### 2. Progress Tracking
+```javascript
+// Show upload progress for better UX
+async function uploadWithProgress(file, onProgress) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  return api.post('/uploads/statement', formData, {
+    onUploadProgress: (progressEvent) => {
+      const percentCompleted = Math.round(
+        (progressEvent.loaded * 100) / progressEvent.total
+      );
+      onProgress(percentCompleted);
+    },
+  });
+}
+
+// Usage
+await uploadWithProgress(pdfFile, (progress) => {
+  console.log(`Upload progress: ${progress}%`);
+  updateProgressBar(progress);
+});
+```
+
+#### 3. File Validation Before Upload
+```javascript
+function validateReceiptFile(file) {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.');
+  }
+  
+  if (file.size > maxSize) {
+    throw new Error('File too large. Maximum size is 10MB.');
+  }
+  
+  return true;
+}
+
+function validateStatementFile(file) {
+  if (file.type !== 'application/pdf') {
+    throw new Error('Invalid file type. Only PDF files are allowed.');
+  }
+  
+  if (file.size > 20 * 1024 * 1024) { // 20MB
+    throw new Error('File too large. Maximum size is 20MB.');
+  }
+  
+  return true;
+}
+```
+
+---
+
+### AI Preview Management
+
+#### 1. Handle Preview Expiration Gracefully
+```javascript
+async function commitReceipt(previewId, transactionData) {
+  try {
+    const response = await api.post('/uploads/receipt/commit', {
+      previewId,
+      transaction: transactionData,
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 410) {
+      // Preview expired - prompt user to re-upload
+      alert('Preview expired. Please upload the receipt again.');
+      return { expired: true };
+    }
+    throw error;
+  }
+}
+```
+
+#### 2. Cache Previews Locally
+```javascript
+// Cache preview data in frontend state to allow editing without re-fetching
+const [previewCache, setPreviewCache] = useState({});
+
+async function fetchPreview(previewId) {
+  // Check cache first
+  if (previewCache[previewId]) {
+    return previewCache[previewId];
+  }
+  
+  // Fetch from API
+  const response = await api.get(`/uploads/previews/${previewId}`);
+  setPreviewCache({ ...previewCache, [previewId]: response.data.data });
+  
+  return response.data.data;
+}
+```
+
+#### 3. Cleanup After Commit
+```javascript
+async function commitAndCleanup(previewId, data) {
+  try {
+    const result = await api.post('/uploads/receipt/commit', {
+      previewId,
+      transaction: data,
+    });
+    
+    // Clear local cache after successful commit
+    delete previewCache[previewId];
+    
+    // Clear form
+    resetForm();
+    
+    // Redirect to transactions list
+    navigate('/transactions');
+    
+    return result;
+  } catch (error) {
+    console.error('Commit failed:', error);
+    throw error;
+  }
+}
+```
+
+---
+
+### Category Management
+
+#### 1. Pre-populate Default Categories
+```javascript
+const DEFAULT_CATEGORIES = [
+  { name: 'Salary', type: 'INCOME' },
+  { name: 'Freelance', type: 'INCOME' },
+  { name: 'Food', type: 'EXPENSE' },
+  { name: 'Transport', type: 'EXPENSE' },
+  { name: 'Shopping', type: 'EXPENSE' },
+  { name: 'Utilities', type: 'EXPENSE' },
+  { name: 'Entertainment', type: 'EXPENSE' },
+  { name: 'Healthcare', type: 'EXPENSE' },
+];
+
+async function setupDefaultCategories() {
+  for (const category of DEFAULT_CATEGORIES) {
+    try {
+      await api.post('/categories', category);
+    } catch (error) {
+      if (error.response?.status !== 409) { // Ignore duplicates
+        console.error(`Failed to create ${category.name}:`, error);
+      }
+    }
+  }
+}
+```
+
+#### 2. Category Caching
+```javascript
+// Cache categories to avoid repeated API calls
+let categoriesCache = null;
+let cacheTimestamp = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getCategories(forceRefresh = false) {
+  const now = Date.now();
+  
+  if (!forceRefresh && categoriesCache && (now - cacheTimestamp) < CACHE_TTL) {
+    return categoriesCache;
+  }
+  
+  const response = await api.get('/categories');
+  categoriesCache = response.data.data;
+  cacheTimestamp = now;
+  
+  return categoriesCache;
+}
+```
+
+---
+
+### Transaction Best Practices
+
+#### 1. Batch Operations
+```javascript
+// When importing statement, commit in batches for better UX
+async function commitStatementInBatches(previewId, transactions, batchSize = 50) {
+  const batches = [];
+  for (let i = 0; i < transactions.length; i += batchSize) {
+    batches.push(transactions.slice(i, i + batchSize));
+  }
+  
+  const results = [];
+  for (let i = 0; i < batches.length; i++) {
+    console.log(`Processing batch ${i + 1}/${batches.length}...`);
+    
+    const result = await api.post('/uploads/statement/commit', {
+      previewId,
+      transactions: batches[i],
+      options: { skipDuplicates: true },
+    });
+    
+    results.push(result.data.data);
+  }
+  
+  return results;
+}
+```
+
+#### 2. Optimistic Updates
+```javascript
+// Update UI immediately, rollback on failure
+async function deleteTransaction(transactionId) {
+  // Save current state
+  const originalTransactions = [...transactions];
+  
+  // Optimistic update
+  setTransactions(transactions.filter(t => t.id !== transactionId));
+  
+  try {
+    await api.delete(`/transactions/${transactionId}`);
+  } catch (error) {
+    // Rollback on failure
+    setTransactions(originalTransactions);
+    alert('Failed to delete transaction');
+  }
+}
+```
+
+#### 3. Pagination for Large Datasets
+```javascript
+async function fetchTransactions(page = 1, pageSize = 50) {
+  const response = await api.get('/transactions', {
+    params: {
+      page,
+      pageSize,
+      // Add sorting
+      sortBy: 'occurredAt',
+      sortOrder: 'desc',
+    },
+  });
+  
+  return response.data;
+}
+```
+
+---
+
+### Error Handling
+
+#### 1. Comprehensive Error Handler
+```javascript
+function handleApiError(error) {
+  if (!error.response) {
+    // Network error
+    return {
+      type: 'NETWORK_ERROR',
+      message: 'Unable to connect to server. Please check your internet connection.',
+    };
+  }
+  
+  const { status, data } = error.response;
+  
+  switch (status) {
+    case 400:
+      return {
+        type: 'VALIDATION_ERROR',
+        message: data.message || 'Invalid request data',
+        details: data.details || [],
+      };
+    
+    case 401:
+      // Auto-logout
+      clearToken();
+      redirectToLogin();
+      return {
+        type: 'AUTH_ERROR',
+        message: 'Session expired. Please login again.',
+      };
+    
+    case 403:
+      return {
+        type: 'FORBIDDEN',
+        message: 'You do not have permission to perform this action.',
+      };
+    
+    case 404:
+      return {
+        type: 'NOT_FOUND',
+        message: data.message || 'Resource not found',
+      };
+    
+    case 409:
+      return {
+        type: 'CONFLICT',
+        message: data.message || 'Resource already exists',
+      };
+    
+    case 410:
+      return {
+        type: 'GONE',
+        message: 'This resource has expired.',
+      };
+    
+    case 500:
+      return {
+        type: 'SERVER_ERROR',
+        message: 'Server error. Please try again later.',
+        traceId: data.traceId, // For support
+      };
+    
+    default:
+      return {
+        type: 'UNKNOWN_ERROR',
+        message: 'An unexpected error occurred.',
+      };
+  }
+}
+```
+
+#### 2. Retry Logic for Transient Failures
+```javascript
+async function apiCallWithRetry(apiCall, maxRetries = 3, delay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      const isLastAttempt = i === maxRetries - 1;
+      const isRetryable = error.response?.status >= 500 || !error.response;
+      
+      if (!isRetryable || isLastAttempt) {
+        throw error;
+      }
+      
+      console.log(`Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2; // Exponential backoff
+    }
+  }
+}
+
+// Usage
+const data = await apiCallWithRetry(() => 
+  api.get('/transactions')
+);
+```
+
+---
+
+## 💻 Code Examples
+
+### React Complete Flow Example
+
+```javascript
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:3001/api',
+});
+
+function ReceiptUpload() {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [transaction, setTransaction] = useState({
+    type: 'EXPENSE',
+    amount: 0,
+    description: '',
+    date: '',
+    categoryId: '',
+  });
+
+  // Step 1: Upload receipt
+  const handleUpload = async () => {
+    if (!file) return;
+    
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await api.post('/uploads/receipt', formData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      const { previewId, extractedData, suggestedTransaction } = response.data.data;
+      
+      setPreview({ previewId });
+      setTransaction({
+        type: suggestedTransaction.type,
+        amount: suggestedTransaction.amount,
+        description: suggestedTransaction.description,
+        date: suggestedTransaction.date,
+        categoryId: suggestedTransaction.categoryId,
+      });
+      
+      alert('Receipt processed! Please review and edit if needed.');
+    } catch (error) {
+      alert('Upload failed: ' + error.response?.data?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Commit transaction
+  const handleCommit = async () => {
+    if (!preview) return;
+    
+    setLoading(true);
+    try {
+      const response = await api.post('/uploads/receipt/commit', {
+        previewId: preview.previewId,
+        transaction,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      alert('Transaction saved successfully!');
+      // Reset form
+      setFile(null);
+      setPreview(null);
+      setTransaction({ type: 'EXPENSE', amount: 0, description: '', date: '', categoryId: '' });
+    } catch (error) {
+      alert('Commit failed: ' + error.response?.data?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2>Upload Receipt</h2>
+      
+      {!preview ? (
+        // Upload phase
+        <>
+          <input 
+            type="file" 
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setFile(e.target.files[0])}
+          />
+          <button onClick={handleUpload} disabled={!file || loading}>
+            {loading ? 'Processing...' : 'Upload & Extract'}
+          </button>
+        </>
+      ) : (
+        // Review & Edit phase
+        <>
+          <h3>Review Extracted Data</h3>
+          <input 
+            type="number"
+            value={transaction.amount}
+            onChange={(e) => setTransaction({ ...transaction, amount: parseFloat(e.target.value) })}
+            placeholder="Amount"
+          />
+          <input 
+            type="text"
+            value={transaction.description}
+            onChange={(e) => setTransaction({ ...transaction, description: e.target.value })}
+            placeholder="Description"
+          />
+          <input 
+            type="date"
+            value={transaction.date}
+            onChange={(e) => setTransaction({ ...transaction, date: e.target.value })}
+          />
+          <select 
+            value={transaction.categoryId}
+            onChange={(e) => setTransaction({ ...transaction, categoryId: e.target.value })}
+          >
+            {/* Load categories from API */}
+            <option value="">Select Category</option>
+          </select>
+          
+          <button onClick={handleCommit} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Transaction'}
+          </button>
+          <button onClick={() => setPreview(null)}>Cancel</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default ReceiptUpload;
+```
+
+---
+
+### Node.js Backend Integration Example
+
+```javascript
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
+
+class FinanceAPIClient {
+  constructor(baseURL, token) {
+    this.client = axios.create({
+      baseURL,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Authentication
+  async register(email, password) {
+    const response = await this.client.post('/auth/register', {
+      email,
+      password,
+    });
+    return response.data;
+  }
+
+  async login(email, password) {
+    const response = await this.client.post('/auth/login', {
+      email,
+      password,
+    });
+    // Update token
+    this.client.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.token}`;
+    return response.data;
+  }
+
+  // Categories
+  async createCategory(name, type) {
+    const response = await this.client.post('/categories', { name, type });
+    return response.data;
+  }
+
+  async getCategories(type = null) {
+    const params = type ? { type } : {};
+    const response = await this.client.get('/categories', { params });
+    return response.data;
+  }
+
+  // Transactions
+  async createTransaction(transaction) {
+    const response = await this.client.post('/transactions', transaction);
+    return response.data;
+  }
+
+  async getTransactions(filters = {}) {
+    const response = await this.client.get('/transactions', { params: filters });
+    return response.data;
+  }
+
+  // Upload Receipt
+  async uploadReceipt(filePath) {
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(filePath));
+
+    const response = await this.client.post('/uploads/receipt', formData, {
+      headers: formData.getHeaders(),
+    });
+    return response.data;
+  }
+
+  async commitReceipt(previewId, transaction) {
+    const response = await this.client.post('/uploads/receipt/commit', {
+      previewId,
+      transaction,
+    });
+    return response.data;
+  }
+
+  // Upload Statement
+  async uploadStatement(filePath) {
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(filePath));
+
+    const response = await this.client.post('/uploads/statement', formData, {
+      headers: formData.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+    return response.data;
+  }
+
+  async commitStatement(previewId, transactions, options = {}) {
+    const response = await this.client.post('/uploads/statement/commit', {
+      previewId,
+      transactions,
+      options,
+    });
+    return response.data;
+  }
+
+  // Statistics
+  async getSummary(startDate, endDate) {
+    const response = await this.client.get('/stats/summary', {
+      params: { startDate, endDate },
+    });
+    return response.data;
+  }
+
+  async getExpensesByCategory(startDate, endDate) {
+    const response = await this.client.get('/stats/expenses-by-category', {
+      params: { startDate, endDate },
+    });
+    return response.data;
+  }
+}
+
+// Usage Example
+async function main() {
+  const client = new FinanceAPIClient('http://localhost:3001/api', '');
+
+  // Register
+  const registerResult = await client.register('user@example.com', 'password123');
+  console.log('Registered:', registerResult.data.user.email);
+
+  // Create categories
+  const foodCategory = await client.createCategory('Food', 'EXPENSE');
+  console.log('Created category:', foodCategory.data.name);
+
+  // Upload receipt
+  const receiptPreview = await client.uploadReceipt('./receipt.jpg');
+  console.log('Receipt extracted:', receiptPreview.data.extractedData);
+
+  // Commit transaction
+  const transaction = await client.commitReceipt(
+    receiptPreview.data.previewId,
+    {
+      type: 'EXPENSE',
+      amount: receiptPreview.data.extractedData.amount,
+      description: 'Coffee',
+      date: receiptPreview.data.extractedData.date,
+      categoryId: foodCategory.data.id,
+    }
+  );
+  console.log('Transaction saved:', transaction.data.id);
+
+  // Get summary
+  const summary = await client.getSummary('2025-10-01', '2025-10-31');
+  console.log('Monthly summary:', summary.data);
+}
+
+main().catch(console.error);
+```
+
+---
+
+### Python Integration Example
+
+```python
+import requests
+from typing import Optional, Dict, List
+
+class FinanceAPIClient:
+    def __init__(self, base_url: str, token: Optional[str] = None):
+        self.base_url = base_url
+        self.token = token
+        self.session = requests.Session()
+        if token:
+            self.session.headers.update({'Authorization': f'Bearer {token}'})
+
+    def register(self, email: str, password: str) -> Dict:
+        response = self.session.post(
+            f'{self.base_url}/auth/register',
+            json={'email': email, 'password': password}
+        )
+        response.raise_for_status()
+        data = response.json()
+        self.token = data['data']['token']
+        self.session.headers.update({'Authorization': f'Bearer {self.token}'})
+        return data
+
+    def login(self, email: str, password: str) -> Dict:
+        response = self.session.post(
+            f'{self.base_url}/auth/login',
+            json={'email': email, 'password': password}
+        )
+        response.raise_for_status()
+        data = response.json()
+        self.token = data['data']['token']
+        self.session.headers.update({'Authorization': f'Bearer {self.token}'})
+        return data
+
+    def create_category(self, name: str, type: str) -> Dict:
+        response = self.session.post(
+            f'{self.base_url}/categories',
+            json={'name': name, 'type': type}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_categories(self, type: Optional[str] = None) -> Dict:
+        params = {'type': type} if type else {}
+        response = self.session.get(
+            f'{self.base_url}/categories',
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def upload_receipt(self, file_path: str) -> Dict:
+        with open(file_path, 'rb') as f:
+            files = {'file': f}
+            response = self.session.post(
+                f'{self.base_url}/uploads/receipt',
+                files=files
+            )
+        response.raise_for_status()
+        return response.json()
+
+    def commit_receipt(self, preview_id: str, transaction: Dict) -> Dict:
+        response = self.session.post(
+            f'{self.base_url}/uploads/receipt/commit',
+            json={'previewId': preview_id, 'transaction': transaction}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_summary(self, start_date: str, end_date: str) -> Dict:
+        response = self.session.get(
+            f'{self.base_url}/stats/summary',
+            params={'startDate': start_date, 'endDate': end_date}
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Usage
+if __name__ == '__main__':
+    client = FinanceAPIClient('http://localhost:3001/api')
+    
+    # Register
+    result = client.register('user@example.com', 'password123')
+    print(f"Registered: {result['data']['user']['email']}")
+    
+    # Create category
+    category = client.create_category('Food', 'EXPENSE')
+    print(f"Created category: {category['data']['name']}")
+    
+    # Upload receipt
+    preview = client.upload_receipt('./receipt.jpg')
+    print(f"Receipt extracted: {preview['data']['extractedData']}")
+    
+    # Commit transaction
+    transaction = client.commit_receipt(
+        preview['data']['previewId'],
+        {
+            'type': 'EXPENSE',
+            'amount': preview['data']['extractedData']['amount'],
+            'description': 'Coffee',
+            'date': preview['data']['extractedData']['date'],
+            'categoryId': category['data']['id']
+        }
+    )
+    print(f"Transaction saved: {transaction['data']['id']}")
+```
+
+---
+
 ## Future Endpoints (Not Yet Implemented)
 
 The following endpoints are planned but not yet available:
@@ -1356,7 +2486,7 @@ The following endpoints are planned but not yet available:
 
 **Last Updated:** October 7, 2025  
 **API Version:** 1.0.0  
-**Test Coverage:** 140 tests passing  
+**Test Coverage:** 187/187 tests passing ✅  
 **Modules:** Auth, Categories, Transactions, Statistics, Uploads
 
 **AI Features:**
@@ -1365,4 +2495,4 @@ The following endpoints are planned but not yet available:
 - Automatic category suggestions
 - Preview/verify/commit workflow
 
-````
+**Support:** For issues or questions, contact support@yourapp.com
