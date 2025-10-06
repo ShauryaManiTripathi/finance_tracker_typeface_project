@@ -23,7 +23,7 @@ export const prismaTest = process.env.NODE_ENV === 'test'
 export async function resetDatabase() {
   // Delete all records in reverse order of dependencies
   try {
-    await prismaTest.importPreview.deleteMany();
+    await prismaTest.uploadPreview.deleteMany();
     await prismaTest.transaction.deleteMany();
     await prismaTest.category.deleteMany();
     await prismaTest.user.deleteMany();

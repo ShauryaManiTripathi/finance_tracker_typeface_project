@@ -3,6 +3,7 @@ import authRoutes from '../modules/auth/auth.routes';
 import categoryRoutes from '../modules/categories/category.routes';
 import transactionRoutes from '../modules/transactions/transaction.routes';
 import statsRoutes from '../modules/stats/stats.routes';
+import uploadRoutes from '../modules/uploads/upload.routes';
 
 const router = Router();
 
@@ -27,9 +28,8 @@ router.use('/transactions', transactionRoutes);
 // Stats routes - implemented
 router.use('/stats', statsRoutes);
 
-router.use('/uploads', (req, res) => {
-  res.status(501).json({ error: 'NotImplemented', message: 'Upload routes not implemented yet' });
-});
+// Upload routes (receipts & statements) - implemented
+router.use('/uploads', uploadRoutes);
 
 router.use('/imports', (req, res) => {
   res.status(501).json({ error: 'NotImplemented', message: 'Import routes not implemented yet' });

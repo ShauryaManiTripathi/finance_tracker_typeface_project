@@ -87,14 +87,17 @@ model Transaction {
   @@map("transactions")
 }
 
-// Optional: Import preview table for AI statement processing
-model ImportPreview {
-  id        String   @id @default(cuid())
+// Upload preview table for AI-extracted data (receipts and statements)
+// Stores temporary previews before user commits to transactions
+model UploadPreview {
+  id        String   @id @default(uuid())
   userId    String
-  content   Json
-  summary   Json
+  type      String   // 'receipt' or 'statement'
+  data      Json     // Extracted data + suggestions
+  expiresAt DateTime // Auto-cleanup after TTL (default 15 minutes)
   createdAt DateTime @default(now())
-  expiresAt DateTime
 
-  @@map("import_previews")
+  @@index([userId, expiresAt])
+  @@index([expiresAt]) // For cleanup cron job
+  @@map("upload_previews")
 }
