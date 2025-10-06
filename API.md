@@ -768,14 +768,182 @@ curl -X POST http://localhost:3001/api/auth/login \
 
 ---
 
+## Stats Endpoints
+
+### GET /stats/summary
+Retrieve summary statistics (total income, expenses, and net) for the authenticated user.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `GET /api/stats/summary` |
+| **Authentication** | Required (JWT) |
+
+#### Query Parameters
+| Parameter | Type | Required | Validation | Description |
+|-----------|------|----------|------------|-------------|
+| `startDate` | date | No | Valid date, YYYY-MM-DD | Start of date range (inclusive) |
+| `endDate` | date | No | Valid date, YYYY-MM-DD | End of date range (inclusive, full day) |
+
+#### Validation Rules
+- If both provided: `startDate` must be ≤ `endDate`
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "income": 6000,
+    "expenses": 2500,
+    "net": 3500
+  }
+}
+```
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | startDate > endDate | `{ "error": "Validation Error", "details": [...] }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+
+---
+
+### GET /stats/expenses-by-category
+Retrieve expenses grouped by category, sorted by amount descending.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `GET /api/stats/expenses-by-category` |
+| **Authentication** | Required (JWT) |
+
+#### Query Parameters
+| Parameter | Type | Required | Validation | Description |
+|-----------|------|----------|------------|-------------|
+| `startDate` | date | No | Valid date, YYYY-MM-DD | Start of date range (inclusive) |
+| `endDate` | date | No | Valid date, YYYY-MM-DD | End of date range (inclusive, full day) |
+
+#### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "categoryId": "clxxx...",
+      "categoryName": "Groceries",
+      "amount": "2000.00"
+    },
+    {
+      "categoryId": null,
+      "categoryName": null,
+      "amount": "500.00"
+    }
+  ]
+}
+```
+
+**Notes:**
+- Only includes EXPENSE type transactions
+- Uncategorized expenses have `categoryId: null` and `categoryName: null`
+- Sorted by amount descending (largest first)
+- Amounts returned as strings (Decimal serialization)
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Invalid date range | `{ "error": "Validation Error", "details": [...] }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+
+---
+
+### GET /stats/expenses-over-time
+Retrieve income and expenses aggregated over time with specified interval.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `GET /api/stats/expenses-over-time` |
+| **Authentication** | Required (JWT) |
+
+#### Query Parameters
+| Parameter | Type | Required | Default | Validation | Description |
+|-----------|------|----------|---------|------------|-------------|
+| `startDate` | date | No | - | Valid date | Start of date range (inclusive) |
+| `endDate` | date | No | - | Valid date | End of date range (inclusive) |
+| `interval` | enum | No | `daily` | `daily`, `weekly`, `monthly` | Time bucket size |
+
+#### Success Response (200 OK)
+
+**Daily Interval:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "dateKey": "2025-10-01",
+      "income": 5000,
+      "expenses": 800,
+      "net": 4200
+    },
+    {
+      "dateKey": "2025-10-02",
+      "income": 0,
+      "expenses": 300,
+      "net": -300
+    }
+  ]
+}
+```
+
+**Weekly Interval:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "dateKey": "2025-W40",
+      "income": 7000,
+      "expenses": 2500,
+      "net": 4500
+    }
+  ]
+}
+```
+
+**Monthly Interval:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "dateKey": "2025-10",
+      "income": 6000,
+      "expenses": 2500,
+      "net": 3500
+    }
+  ]
+}
+```
+
+**Date Key Formats:**
+- `daily`: `YYYY-MM-DD` (e.g., "2025-10-15")
+- `weekly`: `YYYY-Www` (e.g., "2025-W40", ISO week number)
+- `monthly`: `YYYY-MM` (e.g., "2025-10")
+
+**Notes:**
+- Results sorted chronologically
+- Both income and expenses included in each bucket
+- Empty buckets are omitted (not included in response)
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Invalid interval value | `{ "error": "Validation Error", "details": [...] }` |
+| 400 | Invalid date range | `{ "error": "Validation Error", "details": [...] }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+
+---
+
 ## Future Endpoints (Not Yet Implemented)
 
 The following endpoints are planned but not yet available:
-
-### Stats Endpoints
-- `GET /api/stats/summary` - Income/expense summary
-- `GET /api/stats/expenses-by-category` - Category breakdown
-- `GET /api/stats/expenses-over-time` - Time-series data
 
 ### Upload Endpoints
 - `POST /api/uploads/receipt` - Receipt OCR processing
@@ -786,4 +954,4 @@ The following endpoints are planned but not yet available:
 
 **Last Updated:** October 7, 2025  
 **API Version:** 1.0.0  
-**Test Coverage:** 102 tests passing
+**Test Coverage:** 140 tests passing

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import categoryRoutes from '../modules/categories/category.routes';
 import transactionRoutes from '../modules/transactions/transaction.routes';
+import statsRoutes from '../modules/stats/stats.routes';
 
 const router = Router();
 
@@ -23,9 +24,8 @@ router.use('/categories', categoryRoutes);
 // Transaction routes - implemented
 router.use('/transactions', transactionRoutes);
 
-router.use('/stats', (req, res) => {
-  res.status(501).json({ error: 'NotImplemented', message: 'Stats routes not implemented yet' });
-});
+// Stats routes - implemented
+router.use('/stats', statsRoutes);
 
 router.use('/uploads', (req, res) => {
   res.status(501).json({ error: 'NotImplemented', message: 'Upload routes not implemented yet' });
