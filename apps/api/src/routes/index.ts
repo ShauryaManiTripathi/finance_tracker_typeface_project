@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import categoryRoutes from '../modules/categories/category.routes';
+import transactionRoutes from '../modules/transactions/transaction.routes';
 
 const router = Router();
 
@@ -19,10 +20,8 @@ router.use('/auth', authRoutes);
 // Category routes - implemented
 router.use('/categories', categoryRoutes);
 
-// Placeholder routes - will be implemented in subsequent steps
-router.use('/transactions', (req, res) => {
-  res.status(501).json({ error: 'NotImplemented', message: 'Transaction routes not implemented yet' });
-});
+// Transaction routes - implemented
+router.use('/transactions', transactionRoutes);
 
 router.use('/stats', (req, res) => {
   res.status(501).json({ error: 'NotImplemented', message: 'Stats routes not implemented yet' });

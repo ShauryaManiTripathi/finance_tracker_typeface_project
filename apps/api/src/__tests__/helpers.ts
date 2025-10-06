@@ -44,3 +44,32 @@ export async function createAuthenticatedUser(
   
   return { user, token };
 }
+
+/**
+ * Login a test user and return token and userId
+ */
+export async function loginTestUser(
+  email: string,
+  password: string
+): Promise<{ token: string; userId: string }> {
+  const user = await prismaTest.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new Error(`User with email ${email} not found`);
+  }
+
+  const token = generateTestToken(user.id, user.email);
+  return { token, userId: user.id };
+}
+
+/**
+ * Clean up test database
+ */
+export async function cleanupDatabase(): Promise<void> {
+  // Delete in order to respect foreign key constraints
+  await prismaTest.transaction.deleteMany({});
+  await prismaTest.category.deleteMany({});
+  await prismaTest.user.deleteMany({});
+}
