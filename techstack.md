@@ -3,7 +3,7 @@ Stack overview
 - Monorepo: npm workspaces with apps/api and apps/web.
 - Database: PostgreSQL via Prisma ORM.
 - Validation: Zod on API inputs; Ajv for AI JSON schema validation.
-- AI/Vision: Google Gemini (gemini-2.0-flash-exp, gemini-1.5-flash, gemini-1.5-pro) via @google/generative-ai for both receipt OCR and statement parsing.
+- AI/Vision: Google Gemini (gemini-2.0-flash-exp, gemini-1.5-flash, gemini-1.5-pro) via @google/genai (v1.22.0) - unified SDK with File API for both receipt OCR and statement parsing.
 Stack by folder
 
 | Area | Folder | Tech | Why |
@@ -13,8 +13,8 @@ Stack by folder
 | Auth | apps/api | JWT (jsonwebtoken), bcryptjs | Simple, stateless multi-user support |
 | Input validation | apps/api | Zod + custom validate middleware | Enforce request contracts and clean 400s |
 | File upload | apps/api | Multer | Multipart handling for receipts/statements |
-| AI Vision (receipts) | apps/api | @google/generative-ai (Gemini 2.0 Flash) | Extract transaction data from receipt images/PDFs with vision models |
-| AI (statements) | apps/api | @google/generative-ai + Ajv | Gemini structured output for table extraction, JSON schema enforcement |
+| AI Vision (receipts) | apps/api | @google/genai (Gemini 2.0 Flash) with File API | Extract transaction data from receipt images/PDFs with vision models; ai.files.upload() for large files |
+| AI (statements) | apps/api | @google/genai + Ajv | Gemini structured output for table extraction, JSON schema enforcement, File API for PDFs |
 | Config & CORS | apps/api | dotenv (optional), cors | Environment and browser access control |
 | Logging | apps/api | pino (or console for brevity) | Structured logs, easy perf timing |
 | Dev tools | apps/api | ts-node-dev, TypeScript | Fast dev reload + type safety |
@@ -42,7 +42,7 @@ Layering pattern (recommended)
 This segregation is exactly what interviewers look for: clean, testable, and easy to reason about.
 
 Key libraries (pin these unless you prefer alternates)
-- Backend: express, @prisma/client, prisma, zod, jsonwebtoken, bcryptjs, multer, @google/generative-ai, ajv, ajv-formats, cors, pino, ts-node-dev, typescript
+- Backend: express, @prisma/client, prisma, zod, jsonwebtoken, bcryptjs, multer, @google/genai, ajv, ajv-formats, cors, pino, ts-node-dev, typescript
 - Frontend: react, react-dom, react-router-dom, axios, tailwindcss, recharts, date-fns, react-hook-form, zod, vite, vitest, @testing-library/react
 
 Notes for the assignment rubric
