@@ -1,0 +1,32 @@
+{
+  "name": "personal-finance-assistant",
+  "version": "1.0.0",
+  "description": "A full-stack personal finance management application",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build": "npm run build --workspace=apps/api && npm run build --workspace=apps/web",
+    "test": "npm run test --workspace=apps/api && npm run test --workspace=apps/web",
+    "db:setup": "docker-compose up -d && npm run db:migrate --workspace=apps/api",
+    "db:migrate": "npm run db:migrate --workspace=apps/api",
+    "db:seed": "npm run db:seed --workspace=apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "finance",
+    "expense-tracker",
+    "personal-finance",
+    "typescript",
+    "react",
+    "express"
+  ],
+  "author": "Personal Finance Assistant",
+  "license": "MIT"
+}
