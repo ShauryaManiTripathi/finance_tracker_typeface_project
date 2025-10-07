@@ -98,6 +98,32 @@ const LoginPage = () => {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setFormData({
+      email: 'averagejoe@example.com',
+      password: 'Strong@123',
+    });
+    
+    setIsLoading(true);
+
+    try {
+      const response = await authService.login({
+        email: 'averagejoe@example.com',
+        password: 'Strong@123',
+      });
+
+      login(response.token, response.user);
+      
+      toast.success('Welcome to the demo! 🎉');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Demo login error:', error);
+      toast.error('Demo login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,6 +222,36 @@ const LoginPage = () => {
           <div className="w-full border-t border-gray-200"></div>
         </div>
         <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">Or</span>
+        </div>
+      </div>
+
+      {/* Demo Account Button */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full flex items-center justify-center space-x-2 border-2 border-blue-200 hover:border-blue-300 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
+        size="lg"
+        onClick={handleDemoLogin}
+        disabled={isLoading}
+      >
+        <span className="text-2xl">💡</span>
+        <span className="font-semibold text-blue-700">Try Demo Account</span>
+      </Button>
+      
+      {/* Demo Credentials Info */}
+      <div className="text-center">
+        <p className="text-xs text-gray-500">
+          Demo credentials: <span className="font-medium text-gray-700">averagejoe@example.com</span> • <span className="font-medium text-gray-700">Strong@123</span>
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
           <span className="px-2 bg-white text-gray-500">New to FinanceTracker?</span>
         </div>
       </div>
@@ -209,22 +265,6 @@ const LoginPage = () => {
           <span>Create an account</span>
           <ArrowRightIcon className="w-4 h-4" />
         </Link>
-      </div>
-
-      {/* Demo Credentials */}
-      <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
-        <div className="flex items-start space-x-2">
-          <div className="flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-sm">💡</span>
-            </div>
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-blue-900 mb-1">Try Demo Account</p>
-            <p className="text-xs text-blue-700">Email: averagejoe@example.com</p>
-            <p className="text-xs text-blue-700">Password: Strong@123</p>
-          </div>
-        </div>
       </div>
     </div>
   );
