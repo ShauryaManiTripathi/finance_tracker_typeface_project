@@ -127,32 +127,45 @@ const STATEMENT_SCHEMA = {
 /**
  * Receipt extraction prompt for Gemini
  */
-const RECEIPT_PROMPT = `You are a financial assistant. Extract transaction details from this receipt image.
+const RECEIPT_PROMPT = `You are a financial assistant. Extract transaction details from this receipt or invoice image.
+
+CRITICAL INSTRUCTIONS:
+- This is a SINGLE receipt/invoice document
+- Extract ONLY the transactions you can actually see in THIS image
+- DO NOT generate, invent, or hallucinate fake transactions
+- If you see 1 receipt with 1 total, return exactly 1 transaction
+- If you see multiple line items, return only those visible items
 
 Instructions:
 1. Identify the merchant/business name
 2. Find the transaction date (format as YYYY-MM-DD)
-3. Extract the TOTAL amount (not individual items)
+3. Extract the TOTAL amount (not individual items unless it's an itemized invoice)
 4. Determine the currency (default to INR if unclear)
-5. Create a brief description (mention main items if visible)
+5. Create a brief description (mention main items if visible, e.g., "Cappuccino and Croissant at Starbucks")
 6. Suggest an appropriate category name based on the merchant/items:
-   - "Food & Dining" for restaurants, cafes
+   - "Dining" for restaurants, cafes, food delivery
    - "Groceries" for supermarkets, grocery stores
-   - "Transportation" for fuel, uber, parking
-   - "Shopping" for retail, online shopping
+   - "Fuel" for gas stations
+   - "Transportation" for uber, parking, taxi
+   - "Shopping" for retail stores, online shopping
    - "Entertainment" for movies, games, subscriptions
    - "Healthcare" for medical, pharmacy
    - "Utilities" for bills, services
    - "Travel" for hotels, flights
-   - Or create a relevant category name
+   - Or create a relevant category name if none fit
 7. Provide a confidence score (0-1) based on image clarity
+
+IMPORTANT:
+- If this is a single purchase receipt, return exactly 1 transaction with the total amount
+- Only return multiple transactions if you can clearly see multiple separate line items with amounts
+- DO NOT make up transactions that aren't visible in the image
 
 If any field is unclear, set it to null. Return valid JSON only.`;
 
 /**
  * Statement extraction prompt for Gemini
  */
-const STATEMENT_PROMPT = `You are a financial assistant. Extract ALL transactions from this bank statement PDF.
+const STATEMENT_PROMPT = `You are a financial assistant. Extract ALL transactions from this bank statement document.
 
 Instructions:
 1. Identify account information if visible:
@@ -324,15 +337,17 @@ export async function extractReceiptData(
 }
 
 /**
- * Extract multiple transactions from a bank statement PDF using Gemini
+ * Extract multiple transactions from a bank statement PDF or receipt image using Gemini
  * 
- * @param filePath - Path to uploaded statement PDF
+ * @param filePath - Path to uploaded document (PDF or image)
  * @param userId - User ID for storing preview
+ * @param mimeType - MIME type of the uploaded file (e.g., 'application/pdf', 'image/jpeg')
  * @returns Statement preview with AI-extracted transactions
  */
 export async function extractStatementData(
   filePath: string,
-  userId: string
+  userId: string,
+  mimeType?: string
 ): Promise<StatementPreview> {
   logger.info({
     msg: 'Extracting statement data',
@@ -356,8 +371,13 @@ export async function extractStatementData(
       .map(c => c.name)
       .join(', ');
 
-    // Step 2: Build context-aware prompt
-    let contextualPrompt = STATEMENT_PROMPT;
+    // Step 2: Determine if this is a single receipt (image) or statement (PDF)
+    const isImage = mimeType?.startsWith('image/');
+    
+    // Step 3: Build context-aware prompt
+    // Use RECEIPT_PROMPT for images (single receipts), STATEMENT_PROMPT for PDFs (bank statements)
+    let contextualPrompt = isImage ? RECEIPT_PROMPT : STATEMENT_PROMPT;
+    
     if (incomeCategories || expenseCategories) {
       contextualPrompt += '\n\nUser\'s existing categories:\n';
       if (incomeCategories) {
@@ -369,10 +389,18 @@ export async function extractStatementData(
       contextualPrompt += '\nPrefer suggesting from these existing categories if applicable. Only suggest a new category name if none of the existing ones fit.';
     }
 
-    // Step 3: Upload PDF to Gemini and extract with structured output
+    logger.info({
+      msg: 'Using extraction strategy',
+      isImage,
+      mimeType,
+      promptType: isImage ? 'RECEIPT_PROMPT (single transaction)' : 'STATEMENT_PROMPT (multiple transactions)',
+    });
+
+    // Step 4: Upload document to Gemini and extract with structured output
+    // Use actual MIME type from the uploaded file (supports both PDFs and images)
     const extracted = await uploadAndExtract<GeminiStatementData>(
       filePath,
-      'application/pdf',
+      mimeType || 'application/pdf', // Default to PDF for backward compatibility
       contextualPrompt,
       STATEMENT_SCHEMA,
       'statement'
@@ -427,19 +455,29 @@ export async function extractStatementData(
     });
 
     // Step 5: Return formatted preview with normalized structure
+    // Only include accountInfo if there's actual statement data (not for single receipts)
+    const hasAccountInfo = extracted.accountInfo && 
+      (extracted.accountInfo.accountNumber || 
+       extracted.accountInfo.accountHolder || 
+       extracted.accountInfo.bank || 
+       extracted.accountInfo.period?.startDate);
+
     return {
       previewId: preview.id,
       type: 'statement',
       extractedData: {
-        accountInfo: {
-          accountNumber: extracted.accountInfo?.accountNumber || null,
-          accountHolder: extracted.accountInfo?.accountHolder || null,
-          bank: extracted.accountInfo?.bank || null,
-          period: {
-            startDate: extracted.accountInfo?.period?.startDate || '',
-            endDate: extracted.accountInfo?.period?.endDate || '',
+        // Only include accountInfo for actual statements (PDFs with account data)
+        ...(hasAccountInfo && {
+          accountInfo: {
+            accountNumber: extracted.accountInfo?.accountNumber || null,
+            accountHolder: extracted.accountInfo?.accountHolder || null,
+            bank: extracted.accountInfo?.bank || null,
+            period: extracted.accountInfo?.period ? {
+              startDate: extracted.accountInfo.period.startDate || '',
+              endDate: extracted.accountInfo.period.endDate || '',
+            } : undefined,
           },
-        },
+        }),
         transactions: extracted.transactions.map((txn) => ({
           date: txn.date,
           description: txn.description,
@@ -460,7 +498,7 @@ export async function extractStatementData(
       error: error instanceof Error ? error.message : String(error),
       userId,
     });
-    throw new Error('Failed to extract statement data. Please ensure the PDF is a valid bank statement.');
+    throw new Error('Failed to extract transaction data. Please ensure the document is clear and contains valid transaction information.');
   }
 }
 

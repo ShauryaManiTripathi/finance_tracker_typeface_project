@@ -160,12 +160,14 @@ export const uploadService = {
   },
 
   /**
-   * Upload a bank statement PDF and extract all transactions via Gemini AI
+   * Upload a transaction document (image or PDF) and extract all transactions via Gemini AI
+   * Works with single receipts (1 transaction) or bank statements (multiple transactions)
    */
   async uploadStatement(file: File): Promise<ApiResponse<StatementPreview>> {
-    // Validate file type
-    if (file.type !== 'application/pdf') {
-      throw new Error('Invalid file type. Please upload a PDF file.');
+    // Validate file type - Accept images and PDFs
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      throw new Error('Invalid file type. Please upload an image (JPEG, PNG) or PDF file.');
     }
 
     // Validate file size (20 MB max)

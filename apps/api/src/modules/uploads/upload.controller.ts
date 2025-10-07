@@ -113,8 +113,12 @@ export async function uploadStatement(
       mimetype: req.file.mimetype,
     });
 
-    // Extract data using Gemini
-    const preview = await uploadService.extractStatementData(req.file.path, userId);
+    // Extract data using Gemini (supports both PDFs and images)
+    const preview = await uploadService.extractStatementData(
+      req.file.path, 
+      userId,
+      req.file.mimetype
+    );
 
     // Clean up uploaded file
     await fs.unlink(req.file.path).catch((err) =>

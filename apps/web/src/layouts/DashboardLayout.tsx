@@ -61,11 +61,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       description: 'Manage categories'
     },
     { 
-      name: 'Upload', 
+      name: 'Import', 
       path: '/uploads', 
       icon: ArrowUpTrayIcon,
       iconSolid: ArrowUpTrayIconSolid,
-      description: 'Receipt & statements'
+      description: 'Import transactions'
     },
     { 
       name: 'AI Agent', 

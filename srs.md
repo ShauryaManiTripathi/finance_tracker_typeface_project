@@ -134,37 +134,77 @@ F6. Stats and Charts
 - Acceptance Criteria:
   - Correct aggregations respecting filters and user scope.
 
-F7. Receipt Extraction (Images/PDF) via Gemini Vision
-- Description: Upload a POS receipt (image or PDF); backend uses Gemini Vision API to extract transaction data from the image, returning structured JSON with merchant, date, amount, and other details.
-- Inputs:
-  - file: image/jpeg, image/png, application/pdf; max 10 MB.
-- Output:
-  - candidate transaction fields (type=EXPENSE, amount, occurredAt, merchant, description, source=RECEIPT) in structured JSON format.
-  - confidence scores for extracted fields (optional).
-- Process:
-  - Upload image/PDF to Gemini File API or use inline base64.
-  - Call Gemini with vision prompt requesting structured JSON output.
-  - Use responseMimeType=application/json with schema defining transaction fields.
-  - Validate and normalize extracted data.
-- Acceptance Criteria:
-  - Extracts merchant, date, amount, and description with high accuracy.
-  - If extraction fails or confidence is low, return partial candidate with nulls; user can edit and save.
-  - Handles poor image quality, rotated images, and various receipt formats.
-- Errors:
-  - 415 unsupported type; 422 if unreadable; 500 Gemini API failure.
+F7. Transaction Document Import via Gemini (Unified) 🆕
+- Description: Upload any transaction document (receipt images, invoices, or bank statement PDFs); backend uses Gemini Vision API to extract ALL transactions from the document and return structured JSON. Works for single transactions (1 receipt) or bulk imports (100+ transactions from statements).
 
-F8. Statement Import via Gemini (Bonus)
-- Description: Users upload a PDF statement; backend uses Gemini (gemini-2.5-flash or -pro) to return a strict JSON table that the app validates, normalizes, previews, and then commits.
-- Flow:
-  1) POST PDF to /imports/ai/from-pdf → server calls Gemini with structured output schema, returns preview with normalized items, per-row validity, warnings/errors.
-  2) User edits/filters rows on UI.
-  3) POST /imports/ai/commit with previewId + idempotencyKey and options (dedupe, createMissingCategories, overrideDuplicates) → server persists valid rows in bulk.
+- Supported Document Types:
+  - **Single Receipts**: JPEG, PNG, WebP images (1 transaction)
+  - **Multiple Receipts**: JPEG, PNG, WebP images (1-5 transactions)
+  - **Invoices**: PDF or images (1-10 transactions)
+  - **Bank Statements**: PDF (10-100+ transactions)
+  - **Credit Card Statements**: PDF (10-100+ transactions)
+
+- Inputs:
+  - file: image/jpeg, image/png, image/webp, application/pdf; max 20 MB for all types.
+
+- Output:
+  - Array of candidate transactions (each with type=INCOME|EXPENSE, amount, occurredAt, merchant, description)
+  - Account information (if statement): accountNumber, bank, period
+  - Confidence scores per transaction (optional)
+  - Preview ID for verification workflow
+
+- Process:
+  1. **Upload & Extract** (POST /api/uploads/statement):
+     - Upload document to Gemini File API or use inline base64
+     - Call Gemini with vision prompt requesting structured JSON array output
+     - Use responseMimeType=application/json with schema defining transaction array
+     - Extract merchant names from descriptions automatically
+     - Auto-suggest categories based on merchant/description patterns
+     - Return preview with all extracted transactions
+  
+  2. **Review & Edit** (Frontend):
+     - Display transactions in editable table
+     - User can edit amounts, dates, descriptions, categories
+     - User can select/deselect transactions to import
+     - Bulk category assignment for selected rows
+     - Warning for transactions missing categories
+     - Summary shows total income, expenses, net
+  
+  3. **Commit** (POST /api/uploads/statement/commit):
+     - Import selected transactions to database
+     - Skip duplicates (optional, default: true)
+     - Create missing categories automatically (optional)
+     - Return created/skipped counts
+
+- Unified Workflow:
+  - Single flow for all document types (no "receipt vs statement" confusion)
+  - AI automatically detects 1 or 100+ transactions
+  - Same preview/edit/commit pattern for consistency
+  - Preview expires in 15 minutes (TTL)
+
 - Acceptance Criteria:
-  - JSON conforms to AI Table Schema v1.
-  - Preview flags invalid rows with clear reasons.
-  - Commit imports valid rows; duplicates skipped unless overridden.
+  - ✅ Extracts merchant, date, amount, description from any document type
+  - ✅ Handles images (JPEG, PNG, WebP) and PDFs seamlessly
+  - ✅ Works for 1 transaction (receipt) or 100+ (statement)
+  - ✅ Auto-suggests categories based on merchant patterns
+  - ✅ Handles poor image quality, rotated images, various formats
+  - ✅ Duplicate detection prevents re-importing same transactions
+  - ✅ Bulk editing and category assignment in preview
+  - ✅ Clear error messages for extraction failures
+
+- Errors:
+  - 400 invalid file type or size; 422 if unreadable; 500 Gemini API failure.
+
 - Privacy:
-  - UI displays consent notice before sending to Gemini.
+  - UI displays consent notice before sending to Gemini
+  - Documents processed by Gemini but not stored permanently
+  - Only transaction data persisted after user confirmation
+
+- Legacy Endpoints:
+  - POST /uploads/receipt still exists for backward compatibility (images only)
+  - Recommended: Use /uploads/statement for all document types
+
+F8. [DEPRECATED] - Merged into F7 (Unified Transaction Document Import)
 
 F9. Pagination Support Across Lists (Bonus)
 - Description: All list endpoints support page and pageSize; respond with total count.

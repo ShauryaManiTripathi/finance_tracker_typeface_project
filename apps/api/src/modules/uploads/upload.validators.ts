@@ -22,10 +22,15 @@ export const RECEIPT_MIME_TYPES = [
 ] as const;
 
 /**
- * Allowed MIME types for bank statements
+ * Allowed MIME types for transaction documents (images and PDFs)
+ * Used for unified import endpoint that handles receipts, statements, and invoices
  */
 export const STATEMENT_MIME_TYPES = [
   'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
 ] as const;
 
 /**

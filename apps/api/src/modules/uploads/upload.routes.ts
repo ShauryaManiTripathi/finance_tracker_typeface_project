@@ -104,13 +104,13 @@ const receiptFileFilter: multer.Options['fileFilter'] = (req, file, cb) => {
 };
 
 /**
- * File filter for statement PDFs
+ * File filter for statement PDFs and images (unified import)
  */
 const statementFileFilter: multer.Options['fileFilter'] = (req, file, cb) => {
   if (STATEMENT_MIME_TYPES.includes(file.mimetype as any)) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type. Only PDF files are allowed for statements.`));
+    cb(new Error(`Invalid file type. Allowed types: ${STATEMENT_MIME_TYPES.join(', ')}`));
   }
 };
 
@@ -158,12 +158,12 @@ router.post(
 /**
  * POST /api/uploads/statement
  * 
- * Upload a bank statement PDF and extract all transactions.
- * Returns a preview with all extracted transactions.
+ * Upload a transaction document (receipt, invoice, or bank statement) and extract all transactions.
+ * Returns a preview with all extracted transactions (1 or many).
  * 
  * Authentication: Required
  * Content-Type: multipart/form-data
- * Request: file (application/pdf), max 20MB
+ * Request: file (image/jpeg, image/png, image/webp, or application/pdf), max 20MB
  * Response: { success, data: StatementPreview, message }
  */
 router.post(

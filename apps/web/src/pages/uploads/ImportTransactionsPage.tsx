@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  CloudArrowUpIcon,
   DocumentTextIcon,
+  PhotoIcon,
   XMarkIcon,
   ExclamationCircleIcon,
   PencilIcon,
@@ -25,7 +25,7 @@ interface EditableTransaction {
   editing?: boolean;
 }
 
-const StatementUploadTab = () => {
+const ImportTransactionsPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<StatementPreview | null>(null);
@@ -36,7 +36,6 @@ const StatementUploadTab = () => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryType, setNewCategoryType] = useState<TransactionType>('EXPENSE');
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -74,13 +73,14 @@ const StatementUploadTab = () => {
 
   // Handle file selection
   const handleFileSelect = (selectedFile: File) => {
-    // Validate file type
-    if (selectedFile.type !== 'application/pdf') {
-      toast.error('Please upload a PDF file');
+    // Validate file type - Accept images (JPEG, PNG, WebP) and PDFs
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(selectedFile.type)) {
+      toast.error('Please upload an image (JPEG, PNG) or PDF file');
       return;
     }
 
-    // Validate file size (20 MB)
+    // Validate file size (20 MB for all types)
     if (selectedFile.size > 20 * 1024 * 1024) {
       toast.error('File size must be less than 20 MB');
       return;
@@ -117,21 +117,32 @@ const StatementUploadTab = () => {
     }
   };
 
+  // Get file icon based on type
+  const getFileIcon = () => {
+    if (!file) return null;
+    if (file.type === 'application/pdf') {
+      return <DocumentTextIcon className="w-8 h-8 text-blue-600" />;
+    }
+    return <PhotoIcon className="w-8 h-8 text-blue-600" />;
+  };
+
   // Upload and extract
   const handleUpload = async () => {
     if (!file) return;
 
     try {
       setUploading(true);
+      // Use statement endpoint for all file types (it handles both)
       const response = await uploadService.uploadStatement(file);
       
       if (response.success && response.data) {
         setExtractedData(response.data);
-        toast.success(`Statement processed! Found ${response.data.suggestedTransactions.length} transactions.`);
+        const count = response.data.suggestedTransactions.length;
+        toast.success(`Document processed! Found ${count} transaction${count !== 1 ? 's' : ''}.`);
       }
     } catch (error: any) {
-      console.error('Error uploading statement:', error);
-      toast.error(error.message || 'Failed to process statement');
+      console.error('Error uploading document:', error);
+      toast.error(error.message || 'Failed to process document');
     } finally {
       setUploading(false);
     }
@@ -265,15 +276,6 @@ const StatementUploadTab = () => {
     return categories.filter((cat) => cat.type === type);
   };
 
-  // Get filtered categories with search
-  const getFilteredCategories = (type: TransactionType) => {
-    const filtered = categories.filter((cat) => cat.type === type);
-    if (!categorySearch) return filtered;
-    return filtered.filter((cat) => 
-      cat.name.toLowerCase().includes(categorySearch.toLowerCase())
-    );
-  };
-
   // Handle quick category creation
   const handleQuickCategoryCreate = async () => {
     if (!newCategoryName.trim()) {
@@ -295,7 +297,6 @@ const StatementUploadTab = () => {
         // Close modal and reset
         setIsCategoryModalOpen(false);
         setNewCategoryName('');
-        setCategorySearch('');
       }
     } catch (error: any) {
       console.error('Error creating category:', error);
@@ -324,11 +325,11 @@ const StatementUploadTab = () => {
         <div className="flex items-start gap-3">
           <ExclamationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-blue-900">
-            <p className="font-medium mb-1">Statement Import with AI</p>
+            <p className="font-medium mb-1">AI-Powered Transaction Import</p>
             <p className="text-blue-700">
-              Upload a bank statement PDF to automatically extract all transactions.
-              You can review, edit, and bulk-import them into your account.
-              Duplicate transactions can be automatically skipped.
+              Upload any receipt, bank statement, or transaction document (images or PDFs). 
+              Our AI will automatically extract all transactions. You can review, edit, and import them with one click.
+              Supports single transactions or bulk imports from statements.
             </p>
           </div>
         </div>
@@ -338,7 +339,7 @@ const StatementUploadTab = () => {
       {!extractedData && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Upload Bank Statement
+            Upload Transaction Document
           </label>
           
           {!file ? (
@@ -354,15 +355,23 @@ const StatementUploadTab = () => {
                   : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
               }`}
             >
-              <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <div className="flex justify-center gap-3 mb-4">
+                <PhotoIcon className="w-12 h-12 text-gray-400" />
+                <DocumentTextIcon className="w-12 h-12 text-gray-400" />
+              </div>
               <p className="text-base font-medium text-gray-900 mb-1">
                 Click to upload or drag and drop
               </p>
-              <p className="text-sm text-gray-500">PDF only (max 20 MB)</p>
+              <p className="text-sm text-gray-500">
+                Images (JPEG, PNG) or PDF (max 20 MB)
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                💡 Receipts, invoices, bank statements, or any transaction document
+              </p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
                 onChange={handleFileInputChange}
                 className="hidden"
               />
@@ -371,10 +380,11 @@ const StatementUploadTab = () => {
             <div className="border-2 border-gray-300 rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <DocumentTextIcon className="w-8 h-8 text-blue-600" />
+                  {getFileIcon()}
                   <div>
                     <p className="font-medium text-gray-900">{file.name}</p>
                     <p className="text-sm text-gray-500">
+                      {file.type === 'application/pdf' ? 'PDF Document' : 'Image'} • {' '}
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
@@ -392,7 +402,7 @@ const StatementUploadTab = () => {
                 disabled={uploading}
                 className="w-full"
               >
-                {uploading ? 'Processing...' : 'Extract Transactions with AI'}
+                {uploading ? 'Processing with AI...' : 'Extract Transactions'}
               </Button>
             </div>
           )}
@@ -402,25 +412,44 @@ const StatementUploadTab = () => {
       {/* Extracted Transactions */}
       {extractedData && transactions.length > 0 && (
         <div className="space-y-4">
-          {/* Account Info */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Statement Information</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">Account:</span>{' '}
-                <span className="font-medium text-gray-900">
-                  {extractedData.extractedData.accountInfo.accountNumber || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Period:</span>{' '}
-                <span className="font-medium text-gray-900">
-                  {new Date(extractedData.extractedData.accountInfo.period.startDate).toLocaleDateString()} -{' '}
-                  {new Date(extractedData.extractedData.accountInfo.period.endDate).toLocaleDateString()}
-                </span>
+          {/* Document Info (only show for statements with actual account info) */}
+          {extractedData.extractedData.accountInfo && 
+           (extractedData.extractedData.accountInfo.accountNumber || 
+            extractedData.extractedData.accountInfo.bank || 
+            (extractedData.extractedData.accountInfo.period?.startDate && 
+             extractedData.extractedData.accountInfo.period?.endDate)) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">Statement Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {extractedData.extractedData.accountInfo.accountNumber && (
+                  <div>
+                    <span className="text-gray-500">Account:</span>{' '}
+                    <span className="font-medium text-gray-900">
+                      {extractedData.extractedData.accountInfo.accountNumber}
+                    </span>
+                  </div>
+                )}
+                {extractedData.extractedData.accountInfo.bank && (
+                  <div>
+                    <span className="text-gray-500">Bank:</span>{' '}
+                    <span className="font-medium text-gray-900">
+                      {extractedData.extractedData.accountInfo.bank}
+                    </span>
+                  </div>
+                )}
+                {extractedData.extractedData.accountInfo.period?.startDate && 
+                 extractedData.extractedData.accountInfo.period?.endDate && (
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Period:</span>{' '}
+                    <span className="font-medium text-gray-900">
+                      {new Date(extractedData.extractedData.accountInfo.period.startDate).toLocaleDateString()} -{' '}
+                      {new Date(extractedData.extractedData.accountInfo.period.endDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Bulk Actions */}
           <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
@@ -483,7 +512,7 @@ const StatementUploadTab = () => {
             </div>
 
             <div className="text-sm text-gray-600">
-              Total: <span className="font-semibold">{transactions.length}</span> transactions
+              Total: <span className="font-semibold">{transactions.length}</span> transaction{transactions.length !== 1 ? 's' : ''}
             </div>
           </div>
 
@@ -705,7 +734,7 @@ const StatementUploadTab = () => {
               disabled={committing || transactions.filter(t => !t.categoryName || !t.categoryName.trim()).length > 0}
               className="flex-1"
             >
-              {committing ? 'Importing...' : `Import ${transactions.length} Transactions`}
+              {committing ? 'Importing...' : `Import ${transactions.length} Transaction${transactions.length !== 1 ? 's' : ''}`}
             </Button>
             <Button
               onClick={handleReset}
@@ -723,9 +752,9 @@ const StatementUploadTab = () => {
       {extractedData && transactions.length === 0 && (
         <div className="text-center py-12">
           <ExclamationCircleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No transactions found in this statement.</p>
+          <p className="text-gray-600">No transactions found in this document.</p>
           <Button onClick={handleReset} variant="outline" className="mt-4">
-            Upload Another Statement
+            Upload Another Document
           </Button>
         </div>
       )}
@@ -815,4 +844,4 @@ const StatementUploadTab = () => {
   );
 };
 
-export default StatementUploadTab;
+export default ImportTransactionsPage;

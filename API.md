@@ -1541,68 +1541,10 @@ Retrieve income and expenses aggregated over time with specified interval.
 
 ## Upload Endpoints
 
-### POST /uploads/receipt
-Upload a receipt image and extract transaction data using AI.
+**🆕 UNIFIED IMPORT:** The `/uploads/statement` endpoint now accepts both **images (JPEG, PNG, WebP)** and **PDFs**, making it a unified solution for importing transactions from any document type — whether it's a single receipt, multiple invoices, or a full bank statement. The AI automatically detects and extracts 1 to 100+ transactions.
 
-| Property | Value |
-|----------|-------|
-| **Endpoint** | `POST /api/uploads/receipt` |
-| **Authentication** | Required (JWT) |
-| **Content-Type** | `multipart/form-data` |
-
-#### Request Body (Multipart Form Data)
-| Field | Type | Required | Validation | Description |
-|-------|------|----------|------------|-------------|
-| `file` | File | Yes | JPEG/PNG/WebP, max 10MB | Receipt image file |
-
-#### Success Response (200 OK)
-```json
-{
-  "success": true,
-  "data": {
-    "previewId": "550e8400-e29b-41d4-a716-446655440000",
-    "type": "receipt",
-    "extractedData": {
-      "merchant": "Starbucks Coffee",
-      "date": "2025-10-07",
-      "amount": 450.00,
-      "currency": "INR",
-      "description": "Cappuccino, Croissant",
-      "confidence": 0.95
-    },
-    "suggestedTransaction": {
-      "type": "EXPENSE",
-      "amount": 450.00,
-      "description": "Purchase at Starbucks Coffee",
-      "date": "2025-10-07",
-      "categoryId": "cat_food_12345"
-    },
-    "expiresAt": "2025-10-07T14:45:00.000Z",
-    "createdAt": "2025-10-07T14:30:00.000Z"
-  },
-  "message": "Receipt processed successfully. Please review and confirm the extracted data."
-}
-```
-
-**Notes:**
-- Uses Google Gemini Vision API for OCR
-- Preview expires in 15 minutes (TTL)
-- Category is auto-suggested based on merchant/description
-- User should verify/edit data before committing
-
-#### Error Responses
-| Status | Condition | Response |
-|--------|-----------|----------|
-| 400 | No file uploaded | `{ "error": "Bad Request", "message": "No file uploaded" }` |
-| 400 | Invalid file type | `{ "error": "Bad Request", "message": "Invalid file type..." }` |
-| 400 | File too large | `{ "error": "Bad Request", "message": "File too large..." }` |
-| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
-| 500 | AI extraction failed | `{ "error": "Internal Server Error", "message": "Failed to extract receipt data..." }` |
-
----
-
-### POST /uploads/statement
-Upload a bank statement PDF and extract multiple transactions using AI.
+### POST /uploads/statement (Unified Import) 🌟
+Upload any transaction document (receipt image, invoice, or bank statement PDF) and extract all transactions using AI.
 
 | Property | Value |
 |----------|-------|
@@ -1610,10 +1552,19 @@ Upload a bank statement PDF and extract multiple transactions using AI.
 | **Authentication** | Required (JWT) |
 | **Content-Type** | `multipart/form-data` |
 
+#### What Can You Upload?
+- ✅ **Single receipts** (JPEG, PNG, WebP) - 1 transaction
+- ✅ **Multiple receipts** (JPEG, PNG, WebP) - 1-5 transactions
+- ✅ **Invoices** (PDF or images) - 1-10 transactions
+- ✅ **Bank statements** (PDF) - 10-100+ transactions
+- ✅ **Credit card statements** (PDF) - 10-100+ transactions
+
+The AI automatically handles all document types and extracts however many transactions are present!
+
 #### Request Body (Multipart Form Data)
 | Field | Type | Required | Validation | Description |
 |-------|------|----------|------------|-------------|
-| `file` | File | Yes | PDF, max 20MB | Bank statement PDF file |
+| `file` | File | Yes | JPEG/PNG/WebP/PDF, max 20MB | Any transaction document |
 
 #### Success Response (200 OK)
 ```json
@@ -1690,10 +1641,11 @@ Upload a bank statement PDF and extract multiple transactions using AI.
 ```
 
 **Notes:**
-- Extracts ALL transactions from statement PDF
-- **NEW:** Merchant names automatically extracted from descriptions
+- ✅ **Works with images AND PDFs** - Unified solution for all transaction documents
+- ✅ **Smart extraction** - Automatically detects 1 or 100+ transactions
+- Merchant names automatically extracted from descriptions
 - Categories auto-suggested for each transaction based on merchant/description
-- Preview expires in 15 minutes
+- Preview expires in 15 minutes (TTL)
 - Supports deduplication on commit
 - Each transaction can be individually edited before committing
 
@@ -1701,10 +1653,23 @@ Upload a bank statement PDF and extract multiple transactions using AI.
 | Status | Condition | Response |
 |--------|-----------|----------|
 | 400 | No file uploaded | `{ "error": "Bad Request", "message": "No file uploaded" }` |
-| 400 | Invalid file type (not PDF) | `{ "error": "Bad Request", "message": "Invalid file type..." }` |
+| 400 | Invalid file type | `{ "error": "Bad Request", "message": "Invalid file type. Allowed: image/jpeg, image/png, image/webp, application/pdf" }` |
 | 400 | File too large | `{ "error": "Bad Request", "message": "File too large..." }` |
 | 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
-| 500 | AI extraction failed | `{ "error": "Internal Server Error", "message": "Failed to extract statement data..." }` |
+| 500 | AI extraction failed | `{ "error": "Internal Server Error", "message": "Failed to extract document data..." }` |
+
+---
+
+### POST /uploads/receipt (Legacy)
+**⚠️ DEPRECATED:** Use `/uploads/statement` instead for all document types.
+
+This endpoint is maintained for backward compatibility but only accepts images. The `/uploads/statement` endpoint accepts both images and PDFs, making it the preferred choice.
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `POST /api/uploads/receipt` |
+| **Authentication** | Required (JWT) |
+| **Status** | Deprecated (use `/uploads/statement` instead) |
 
 ---
 
