@@ -17,6 +17,7 @@ const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const TransactionsPage = lazy(() => import('./pages/transactions/TransactionsPage'));
 const CategoriesPage = lazy(() => import('./pages/categories/CategoriesPage'));
 const UploadsPage = lazy(() => import('./pages/uploads/UploadsPage'));
+const AgentPage = lazy(() => import('./pages/agent/AgentPage'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -108,6 +109,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <DashboardLayout>
           <UploadsPage />
+        </DashboardLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/agent',
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <AgentPage />
         </DashboardLayout>
       </ProtectedRoute>
     ),

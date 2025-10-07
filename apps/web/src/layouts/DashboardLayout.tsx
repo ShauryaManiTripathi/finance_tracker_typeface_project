@@ -8,13 +8,15 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { 
   HomeIcon as HomeIconSolid,
   CreditCardIcon as CreditCardIconSolid,
   FolderIcon as FolderIconSolid,
-  ArrowUpTrayIcon as ArrowUpTrayIconSolid
+  ArrowUpTrayIcon as ArrowUpTrayIconSolid,
+  SparklesIcon as SparklesIconSolid
 } from '@heroicons/react/24/solid';
 import { authService } from '../services/auth.service';
 import toast from 'react-hot-toast';
@@ -64,6 +66,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       icon: ArrowUpTrayIcon,
       iconSolid: ArrowUpTrayIconSolid,
       description: 'Receipt & statements'
+    },
+    { 
+      name: 'AI Agent', 
+      path: '/agent', 
+      icon: SparklesIcon,
+      iconSolid: SparklesIconSolid,
+      description: 'Financial assistant'
     },
   ];
 

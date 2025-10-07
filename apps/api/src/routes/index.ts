@@ -4,6 +4,7 @@ import categoryRoutes from '../modules/categories/category.routes';
 import transactionRoutes from '../modules/transactions/transaction.routes';
 import statsRoutes from '../modules/stats/stats.routes';
 import uploadRoutes from '../modules/uploads/upload.routes';
+import agentRoutes from '../modules/agent/agent.routes';
 
 const router = Router();
 
@@ -27,6 +28,9 @@ router.use('/transactions', transactionRoutes);
 
 // Stats routes - implemented
 router.use('/stats', statsRoutes);
+
+// AI Agent routes - implemented
+router.use('/agent', agentRoutes);
 
 // Upload routes (receipts & statements) - implemented
 router.use('/uploads', uploadRoutes);
