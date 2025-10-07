@@ -13,7 +13,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting - more lenient in development
 const limiter = rateLimit({
   windowMs: config.rateLimitWindowMs,
   max: config.rateLimitMaxRequests,
@@ -21,6 +21,7 @@ const limiter = rateLimit({
     error: 'TooManyRequests',
     message: 'Too many requests from this IP, please try again later.',
   },
+  skip: (req) => config.nodeEnv === 'development', // Skip rate limiting in development
 });
 app.use(limiter);
 

@@ -7,6 +7,12 @@ export interface ApiResponse<T = any> {
   pagination?: PaginationMeta;
 }
 
+export interface PaginatedResponse<T = any> {
+  success: boolean;
+  data: T[];
+  pagination: PaginationMeta;
+}
+
 export interface PaginationMeta {
   total: number;
   page: number;

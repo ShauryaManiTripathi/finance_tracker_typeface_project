@@ -37,7 +37,7 @@ const rawConfig = {
   maxReceiptSizeMb: parseEnvNumber(process.env.MAX_RECEIPT_SIZE_MB, 10),
   maxStatementSizeMb: parseEnvNumber(process.env.MAX_STATEMENT_SIZE_MB, 20),
   rateLimitWindowMs: parseEnvNumber(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
-  rateLimitMaxRequests: parseEnvNumber(process.env.RATE_LIMIT_MAX_REQUESTS, 100),
+  rateLimitMaxRequests: parseEnvNumber(process.env.RATE_LIMIT_MAX_REQUESTS, 5000),
 };
 
 export const config = configSchema.parse(rawConfig);
