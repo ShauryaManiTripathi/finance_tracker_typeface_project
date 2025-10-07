@@ -10,13 +10,14 @@ pnpm-debug.log*
 .env.local
 .env.development
 .env.development.local
+.env.test
 .env.test.local
 .env.production
 .env.production.local
 
 # Keep example files
 !.env.example
-!.env.test
+!.env.test.example
 
 # Database
 *.db

@@ -5,8 +5,17 @@ import path from 'path';
 import fs from 'fs';
 import { prisma as prodPrisma } from '../db/prisma';
 
-// Load test environment variables
-dotenv.config({ path: '.env.test' });
+// Load test environment variables from root directory
+// First try .env.test, fallback to .env
+const rootDir = path.resolve(__dirname, '../../../..');
+const testEnvPath = path.join(rootDir, '.env.test');
+const defaultEnvPath = path.join(rootDir, '.env');
+
+if (fs.existsSync(testEnvPath)) {
+  dotenv.config({ path: testEnvPath });
+} else {
+  dotenv.config({ path: defaultEnvPath });
+}
 
 // Use the production prisma client for tests if in test environment
 export const prismaTest = process.env.NODE_ENV === 'test' 
