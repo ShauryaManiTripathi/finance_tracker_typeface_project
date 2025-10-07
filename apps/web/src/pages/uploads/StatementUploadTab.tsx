@@ -6,6 +6,7 @@ import {
   ExclamationCircleIcon,
   PencilIcon,
   CheckIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import { uploadService, type StatementPreview } from '../../services/upload.service';
@@ -34,6 +35,11 @@ const StatementUploadTab = () => {
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [dragActive, setDragActive] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryType, setNewCategoryType] = useState<TransactionType>('EXPENSE');
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch categories
@@ -58,6 +64,7 @@ const StatementUploadTab = () => {
         amount: txn.amount,
         description: txn.description || '',
         date: txn.date,
+        merchant: txn.merchant || undefined,
         categoryId: txn.categoryId || undefined,
         editing: false,
       }));
@@ -189,19 +196,14 @@ const StatementUploadTab = () => {
       setCommitting(true);
       
       // Convert to API format
-      const txnsData = transactions.map((txn) => {
-        const occurredAtDate = new Date(txn.date);
-        occurredAtDate.setHours(12, 0, 0, 0);
-        
-        return {
-          type: txn.type,
-          amount: txn.amount,
-          description: txn.description,
-          date: occurredAtDate.toISOString(),
-          categoryId: txn.categoryId || undefined,
-          merchant: txn.merchant || undefined,
-        };
-      });
+      const txnsData = transactions.map((txn) => ({
+        type: txn.type,
+        amount: txn.amount,
+        description: txn.description,
+        date: txn.date, // Already in YYYY-MM-DD format
+        categoryId: txn.categoryId || undefined,
+        merchant: txn.merchant || undefined,
+      }));
 
       const response = await uploadService.commitStatement({
         previewId: extractedData.previewId,
@@ -247,6 +249,50 @@ const StatementUploadTab = () => {
   // Get filtered categories by type
   const getCategoriesByType = (type: TransactionType) => {
     return categories.filter((cat) => cat.type === type);
+  };
+
+  // Get filtered categories with search
+  const getFilteredCategories = (type: TransactionType) => {
+    const filtered = categories.filter((cat) => cat.type === type);
+    if (!categorySearch) return filtered;
+    return filtered.filter((cat) => 
+      cat.name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+  };
+
+  // Handle quick category creation
+  const handleQuickCategoryCreate = async () => {
+    if (!newCategoryName.trim()) {
+      toast.error('Please enter a category name');
+      return;
+    }
+
+    try {
+      setCreatingCategory(true);
+      const response = await categoryService.createCategory({
+        name: newCategoryName.trim(),
+        type: newCategoryType,
+      });
+
+      if (response.success && response.data) {
+        toast.success('Category created successfully!');
+        // Add to local categories list
+        setCategories([...categories, response.data]);
+        // Close modal and reset
+        setIsCategoryModalOpen(false);
+        setNewCategoryName('');
+        setCategorySearch('');
+      }
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      if (error.response?.status === 409) {
+        toast.error('A category with this name already exists');
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to create category');
+      }
+    } finally {
+      setCreatingCategory(false);
+    }
   };
 
   // Format currency
@@ -380,32 +426,45 @@ const StatementUploadTab = () => {
               </label>
               
               {selectedRows.size > 0 && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      bulkUpdateCategory(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  className="text-sm px-3 py-1 border border-gray-300 rounded-lg"
-                  defaultValue=""
-                >
-                  <option value="">Assign category...</option>
-                  <optgroup label="Income">
-                    {categories.filter(c => c.type === 'INCOME').map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Expense">
-                    {categories.filter(c => c.type === 'EXPENSE').map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                <>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        bulkUpdateCategory(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="text-sm px-3 py-1 border border-gray-300 rounded-lg"
+                    defaultValue=""
+                  >
+                    <option value="">Assign category...</option>
+                    <optgroup label="Income">
+                      {categories.filter(c => c.type === 'INCOME').map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Expense">
+                      {categories.filter(c => c.type === 'EXPENSE').map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  
+                  <button
+                    onClick={() => {
+                      setNewCategoryType('EXPENSE');
+                      setIsCategoryModalOpen(true);
+                    }}
+                    className="text-sm px-3 py-1 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Create Category
+                  </button>
+                </>
               )}
             </div>
 
@@ -630,6 +689,88 @@ const StatementUploadTab = () => {
           <Button onClick={handleReset} variant="outline" className="mt-4">
             Upload Another Statement
           </Button>
+        </div>
+      )}
+
+      {/* Quick Category Creation Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Category</h3>
+            
+            <div className="space-y-4">
+              {/* Category Name Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && newCategoryName.trim()) {
+                      handleQuickCategoryCreate();
+                    }
+                  }}
+                  placeholder="e.g., Groceries, Salary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  maxLength={100}
+                  autoFocus
+                />
+              </div>
+
+              {/* Transaction Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewCategoryType('INCOME')}
+                    className={`px-4 py-3 border-2 rounded-lg font-medium transition-all ${
+                      newCategoryType === 'INCOME'
+                        ? 'border-green-600 bg-green-50 text-green-700'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    📈 Income
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewCategoryType('EXPENSE')}
+                    className={`px-4 py-3 border-2 rounded-lg font-medium transition-all ${
+                      newCategoryType === 'EXPENSE'
+                        ? 'border-red-600 bg-red-50 text-red-700'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    📉 Expense
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleQuickCategoryCreate}
+                disabled={creatingCategory || !newCategoryName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {creatingCategory ? 'Creating...' : 'Create'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  setNewCategoryName('');
+                }}
+                disabled={creatingCategory}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

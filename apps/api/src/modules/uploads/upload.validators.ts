@@ -72,6 +72,7 @@ export const commitStatementSchema = z.object({
       description: z.string().min(1, 'Description is required').max(500),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
       categoryId: z.string().min(1, 'Category ID is required'), // Accept any string ID (CUID or UUID)
+      merchant: z.string().optional(), // Optional merchant field
     })
   ).min(1, 'At least one transaction is required'),
   
@@ -124,25 +125,27 @@ export const statementPreviewSchema = z.object({
   type: z.literal('statement'),
   extractedData: z.object({
     accountInfo: z.object({
-      accountNumber: z.string().optional(),
-      accountHolder: z.string().optional(),
-      statementPeriod: z.object({
-        from: z.string().optional(),
-        to: z.string().optional(),
-      }).optional(),
-    }).optional(),
+      accountNumber: z.string().nullable(),
+      accountHolder: z.string().nullable(),
+      bank: z.string().nullable(),
+      period: z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+      }),
+    }),
     transactions: z.array(
       z.object({
         date: z.string(),
         description: z.string(),
+        merchant: z.string().nullable(),
         amount: z.number(),
         type: transactionTypeSchema,
-        balance: z.number().optional(),
+        balance: z.number().nullable(),
       })
     ),
     summary: z.object({
-      totalIncome: z.number().optional(),
-      totalExpenses: z.number().optional(),
+      totalIncome: z.number(),
+      totalExpenses: z.number(),
       transactionCount: z.number(),
     }),
   }),
@@ -152,7 +155,8 @@ export const statementPreviewSchema = z.object({
       amount: z.number(),
       description: z.string(),
       date: z.string(),
-      categoryId: z.string().uuid().nullable(),
+      merchant: z.string().nullable(),
+      categoryId: z.string().nullable(),
     })
   ),
   expiresAt: z.string(),

@@ -68,11 +68,12 @@ const STATEMENT_SCHEMA = {
       properties: {
         accountNumber: { type: 'string' },
         accountHolder: { type: 'string' },
-        statementPeriod: {
+        bank: { type: 'string' },
+        period: {
           type: 'object',
           properties: {
-            from: { type: 'string' },
-            to: { type: 'string' },
+            startDate: { type: 'string', description: 'Statement start date in YYYY-MM-DD format' },
+            endDate: { type: 'string', description: 'Statement end date in YYYY-MM-DD format' },
           },
         },
       },
@@ -88,7 +89,11 @@ const STATEMENT_SCHEMA = {
           },
           description: {
             type: 'string',
-            description: 'Transaction description',
+            description: 'Full transaction description as it appears in the statement',
+          },
+          merchant: {
+            type: 'string',
+            description: 'Merchant or payee name extracted from the description (e.g., "DILLONS", "Salary", "CHECK", etc.)',
           },
           amount: {
             type: 'number',
@@ -132,17 +137,22 @@ If any field is unclear, set it to null. Return valid JSON only.`;
 const STATEMENT_PROMPT = `You are a financial assistant. Extract ALL transactions from this bank statement PDF.
 
 Instructions:
-1. Identify account information if visible (account number, holder name, statement period)
+1. Identify account information if visible:
+   - accountNumber: Account number
+   - accountHolder: Account holder name
+   - bank: Bank name (if visible)
+   - period: Statement period with startDate and endDate in YYYY-MM-DD format
 2. Extract EVERY transaction row with:
-   - Date (YYYY-MM-DD format)
-   - Description (as written in statement)
-   - Amount (always positive number, use 'type' field for INCOME vs EXPENSE)
-   - Type (INCOME for credits/deposits, EXPENSE for debits/withdrawals)
-   - Balance (if shown in statement)
+   - date: Transaction date in YYYY-MM-DD format
+   - description: Full transaction description exactly as written in statement
+   - merchant: Extract the merchant/payee name from the description (examples: "DILLONS", "Salary", "CHECK 1248", "TERMINAL S097094", "CASH WITHDRAWAL")
+   - amount: Always positive number (use 'type' field for INCOME vs EXPENSE)
+   - type: "INCOME" for credits/deposits, "EXPENSE" for debits/withdrawals  
+   - balance: Account balance after transaction (if shown)
 3. Ignore summary rows, headers, and footers
 4. Maintain chronological order
 
-Return valid JSON with an array of transactions. Be thorough and extract all visible transactions.`;
+Return valid JSON with all extracted transactions. Be thorough and extract merchant names!`;
 
 /**
  * Interface for Gemini receipt extraction result
@@ -163,14 +173,16 @@ interface GeminiStatementData {
   accountInfo?: {
     accountNumber?: string;
     accountHolder?: string;
-    statementPeriod?: {
-      from?: string;
-      to?: string;
+    bank?: string;
+    period?: {
+      startDate?: string;
+      endDate?: string;
     };
   };
   transactions: Array<{
     date: string;
     description: string;
+    merchant?: string;
     amount: number;
     type: 'INCOME' | 'EXPENSE';
     balance?: number;
@@ -315,6 +327,7 @@ export async function extractStatementData(
           amount: txn.amount,
           description: txn.description,
           date: txn.date,
+          merchant: txn.merchant || null,
           categoryId,
         };
       })
@@ -349,19 +362,34 @@ export async function extractStatementData(
       },
     });
 
-    // Step 5: Return formatted preview
+    // Step 5: Return formatted preview with normalized structure
     return {
       previewId: preview.id,
       type: 'statement',
       extractedData: {
-        accountInfo: extracted.accountInfo,
-        transactions: extracted.transactions,
+        accountInfo: {
+          accountNumber: extracted.accountInfo?.accountNumber || null,
+          accountHolder: extracted.accountInfo?.accountHolder || null,
+          bank: extracted.accountInfo?.bank || null,
+          period: {
+            startDate: extracted.accountInfo?.period?.startDate || '',
+            endDate: extracted.accountInfo?.period?.endDate || '',
+          },
+        },
+        transactions: extracted.transactions.map((txn) => ({
+          date: txn.date,
+          description: txn.description,
+          merchant: txn.merchant || null,
+          amount: txn.amount,
+          type: txn.type,
+          balance: txn.balance ?? null,
+        })),
         summary,
       },
       suggestedTransactions,
       expiresAt: preview.expiresAt.toISOString(),
       createdAt: preview.createdAt.toISOString(),
-    };
+    } as StatementPreview;
   } catch (error) {
     logger.error({
       msg: 'Error extracting statement data',
@@ -533,6 +561,8 @@ export async function commitStatement(input: CommitStatementInput, userId: strin
       description: txn.description,
       occurredAt: new Date(txn.date),
       categoryId: txn.categoryId,
+      merchant: txn.merchant || null,
+      source: 'STATEMENT_IMPORT',
     })),
   });
 

@@ -40,6 +40,7 @@ export interface StatementPreview {
     transactions: Array<{
       date: string;
       description: string;
+      merchant: string | null;
       amount: number;
       type: 'INCOME' | 'EXPENSE';
       balance: number | null;
@@ -55,6 +56,7 @@ export interface StatementPreview {
     amount: number;
     description: string;
     date: string;
+    merchant: string | null;
     categoryId: string | null;
   }>;
   expiresAt: string;
