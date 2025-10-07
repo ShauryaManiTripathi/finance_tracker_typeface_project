@@ -1319,25 +1319,36 @@ Upload a bank statement PDF and extract multiple transactions using AI.
       "accountInfo": {
         "accountNumber": "****1234",
         "accountHolder": "John Doe",
-        "statementPeriod": {
-          "from": "2025-09-01",
-          "to": "2025-09-30"
+        "bank": "Example Bank",
+        "period": {
+          "startDate": "2025-09-01",
+          "endDate": "2025-09-30"
         }
       },
       "transactions": [
         {
           "date": "2025-09-05",
-          "description": "Salary Credit",
+          "description": "Salary Credit from Employer",
+          "merchant": "Salary",
           "amount": 50000.00,
           "type": "INCOME",
           "balance": 55000.00
         },
         {
           "date": "2025-09-10",
-          "description": "Amazon Purchase",
+          "description": "AMAZON.COM ORDER 123-4567890-1234567",
+          "merchant": "Amazon",
           "amount": 2500.00,
           "type": "EXPENSE",
           "balance": 52500.00
+        },
+        {
+          "date": "2025-09-15",
+          "description": "CHECK 1234",
+          "merchant": "CHECK 1234",
+          "amount": 500.00,
+          "type": "EXPENSE",
+          "balance": 52000.00
         }
       ],
       "summary": {
@@ -1350,14 +1361,16 @@ Upload a bank statement PDF and extract multiple transactions using AI.
       {
         "type": "INCOME",
         "amount": 50000.00,
-        "description": "Salary Credit",
+        "description": "Salary Credit from Employer",
+        "merchant": "Salary",
         "date": "2025-09-05",
         "categoryId": "cat_salary_98765"
       },
       {
         "type": "EXPENSE",
         "amount": 2500.00,
-        "description": "Amazon Purchase",
+        "description": "AMAZON.COM ORDER 123-4567890-1234567",
+        "merchant": "Amazon",
         "date": "2025-09-10",
         "categoryId": "cat_shopping_54321"
       }
@@ -1371,9 +1384,11 @@ Upload a bank statement PDF and extract multiple transactions using AI.
 
 **Notes:**
 - Extracts ALL transactions from statement PDF
-- Categories auto-suggested for each transaction
+- **NEW:** Merchant names automatically extracted from descriptions
+- Categories auto-suggested for each transaction based on merchant/description
 - Preview expires in 15 minutes
 - Supports deduplication on commit
+- Each transaction can be individually edited before committing
 
 #### Error Responses
 | Status | Condition | Response |
@@ -1486,6 +1501,7 @@ Commit verified statement transactions to the database (bulk import).
 | `transactions[].description` | string | Yes | Transaction description |
 | `transactions[].date` | string | Yes | Date in YYYY-MM-DD format |
 | `transactions[].categoryId` | string | Yes | Category ID (must exist) |
+| `transactions[].merchant` | string | No | Merchant name (optional) |
 | `options` | object | No | Import options |
 | `options.skipDuplicates` | boolean | No | Skip duplicate transactions (default: true) |
 
@@ -1497,16 +1513,26 @@ Commit verified statement transactions to the database (bulk import).
     {
       "type": "INCOME",
       "amount": 50000.00,
-      "description": "Salary Credit",
+      "description": "Salary Credit from Employer",
+      "merchant": "Salary",
       "date": "2025-09-05",
       "categoryId": "cat_salary_98765"
     },
     {
       "type": "EXPENSE",
       "amount": 2500.00,
-      "description": "Amazon Purchase",
+      "description": "AMAZON.COM ORDER 123-4567890-1234567",
+      "merchant": "Amazon",
       "date": "2025-09-10",
       "categoryId": "cat_shopping_54321"
+    },
+    {
+      "type": "EXPENSE",
+      "amount": 500.00,
+      "description": "CHECK 1234",
+      "merchant": "CHECK 1234",
+      "date": "2025-09-15",
+      "categoryId": "cat_groceries_11111"
     }
   ],
   "options": {
