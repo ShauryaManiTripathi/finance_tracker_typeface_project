@@ -221,8 +221,8 @@ const LoginPage = () => {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold text-blue-900 mb-1">Try Demo Account</p>
-            <p className="text-xs text-blue-700">Email: demo@example.com</p>
-            <p className="text-xs text-blue-700">Password: demo123</p>
+            <p className="text-xs text-blue-700">Email: averagejoe@example.com</p>
+            <p className="text-xs text-blue-700">Password: Strong@123</p>
           </div>
         </div>
       </div>

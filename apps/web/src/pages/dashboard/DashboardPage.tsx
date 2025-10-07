@@ -66,6 +66,11 @@ const DashboardPage = () => {
       };
     }
     
+    // Handle "all" time - return empty object to omit date filters
+    if (days === 'all') {
+      return {};
+    }
+    
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
@@ -82,6 +87,10 @@ const DashboardPage = () => {
       const start = new Date(customStartDate);
       const end = new Date(customEndDate);
       return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    }
+    // For "all" time, use 365 days as default for interval calculation (will use monthly)
+    if (dateRange === 'all') {
+      return 365;
     }
     return parseInt(dateRange);
   };
@@ -332,6 +341,7 @@ const DashboardPage = () => {
             <option value="30">Last 30 days</option>
             <option value="90">Last 90 days</option>
             <option value="365">Last year</option>
+            <option value="all">All Time</option>
             <option value="custom">Custom Range</option>
           </select>
           
@@ -617,63 +627,65 @@ const DashboardPage = () => {
       )}
 
       {/* Recent Transactions */}
+      {/* Recent Transactions - Left Half */}
       {!loading && recentTransactions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Recent Transactions</span>
-              <Link to="/transactions" className="text-sm text-blue-600 hover:text-blue-700">
-                View all →
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-2 h-2 rounded-full ${
-                      transaction.type === 'INCOME' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {transaction.merchant || transaction.description || 'Transaction'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {transaction.category && (
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
-                            {transaction.category.name}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Recent Transactions</span>
+                <Link to="/transactions" className="text-sm text-blue-600 hover:text-blue-700">
+                  View all →
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recentTransactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        transaction.type === 'INCOME' ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {transaction.merchant || transaction.description || 'Transaction'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {transaction.category && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+                              {transaction.category.name}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {new Date(transaction.occurredAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
                           </span>
-                        )}
-                        <span className="text-xs text-gray-500">
-                          {new Date(transaction.occurredAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
+                        </div>
                       </div>
                     </div>
+                    <span className={`text-sm font-semibold ml-4 ${
+                      transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
+                    }`}>
+                      {transaction.type === 'INCOME' ? '+' : '-'}
+                      {formatCurrency(parseFloat(transaction.amount))}
+                    </span>
                   </div>
-                  <span className={`text-sm font-semibold ml-4 ${
-                    transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
-                  }`}>
-                    {transaction.type === 'INCOME' ? '+' : '-'}
-                    {formatCurrency(parseFloat(transaction.amount))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Right half - Reserved for future components */}
+          <div className="hidden lg:block"></div>
+        </div>
       )}
-
-      <div className="text-center text-gray-500 py-20">
-        <p>More dashboard components will be added here...</p>
-      </div>
 
       {/* Add Transaction Modal */}
       {isAddModalOpen && (
