@@ -36,6 +36,7 @@ const ReceiptUploadTab = () => {
   const [categorySearch, setCategorySearch] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const [committing, setCommitting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -391,164 +392,243 @@ const ReceiptUploadTab = () => {
             </div>
           )}
 
-          {/* Edit Form */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Review & Edit Transaction</h3>
+          {/* Extracted Data Summary */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Extracted Transaction Details</h3>
             
-            {/* Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, type: 'INCOME', categoryId: '' })}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
-                    formData.type === 'INCOME'
-                      ? 'border-green-600 bg-green-50 text-green-700'
-                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                  }`}
-                >
-                  Income
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, type: 'EXPENSE', categoryId: '' })}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
-                    formData.type === 'EXPENSE'
-                      ? 'border-red-600 bg-red-50 text-red-700'
-                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                  }`}
-                >
-                  Expense
-                </button>
-              </div>
-            </div>
-
-            {/* Amount and Date */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00"
-                />
+                <p className="text-sm text-gray-600">Type</p>
+                <p className={`font-medium ${formData.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                  {formData.type === 'INCOME' ? '📈 Income' : '📉 Expense'}
+                </p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Merchant */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Merchant</label>
-              <input
-                type="text"
-                value={formData.merchant}
-                onChange={(e) => setFormData({ ...formData, merchant: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Starbucks, Amazon"
-                maxLength={200}
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Transaction details..."
-                maxLength={500}
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               
-              {/* Search Categories */}
-              <div className="relative mb-2">
-                <input
-                  type="text"
-                  value={categorySearch}
-                  onChange={(e) => setCategorySearch(e.target.value)}
-                  placeholder="Search categories..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
-                />
-                {categorySearch && (
-                  <button
-                    type="button"
-                    onClick={() => setCategorySearch('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
-                )}
+              <div>
+                <p className="text-sm text-gray-600">Amount</p>
+                <p className="font-medium text-gray-900">
+                  {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'N/A'}
+                </p>
               </div>
-
-              {/* Create New Category Button */}
-              <button
-                type="button"
-                onClick={() => setIsCategoryModalOpen(true)}
-                className="w-full mb-2 px-3 py-2 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 font-medium"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Create New Category
-              </button>
-
-              {/* Category List */}
-              <select
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                size={5}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">None</option>
-                {getFilteredCategories().map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              
+              <div>
+                <p className="text-sm text-gray-600">Date</p>
+                <p className="font-medium text-gray-900">{formData.date || 'N/A'}</p>
+              </div>
+              
+              <div>
+                <p className="text-sm text-gray-600">Merchant</p>
+                <p className="font-medium text-gray-900">{formData.merchant || 'N/A'}</p>
+              </div>
+              
+              <div className="col-span-2">
+                <p className="text-sm text-gray-600">Description</p>
+                <p className="font-medium text-gray-900">{formData.description || 'N/A'}</p>
+              </div>
+              
+              <div className="col-span-2">
+                <p className="text-sm text-gray-600">Category</p>
+                <p className="font-medium text-gray-900">
+                  {formData.categoryId 
+                    ? categories.find(c => c.id === formData.categoryId)?.name 
+                    : 'None'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-3">
             <Button
+              onClick={() => setIsEditModalOpen(true)}
+              variant="outline"
+              className="flex-1"
+            >
+              ✏️ Review & Edit
+            </Button>
+            <Button
               onClick={handleCommit}
               disabled={committing}
               className="flex-1"
             >
-              {committing ? 'Saving...' : 'Save Transaction'}
+              {committing ? 'Saving...' : '💾 Save Transaction'}
             </Button>
             <Button
               onClick={handleReset}
               variant="outline"
               disabled={committing}
-              className="flex-1"
             >
-              Start Over
+              🔄 Start Over
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {isEditModalOpen && extractedData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Review & Edit Transaction</h3>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: 'INCOME', categoryId: '' })}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
+                      formData.type === 'INCOME'
+                        ? 'border-green-600 bg-green-50 text-green-700'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    Income
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: 'EXPENSE', categoryId: '' })}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
+                      formData.type === 'EXPENSE'
+                        ? 'border-red-600 bg-red-50 text-red-700'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    Expense
+                  </button>
+                </div>
+              </div>
+
+              {/* Amount and Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Merchant */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Merchant</label>
+                <input
+                  type="text"
+                  value={formData.merchant}
+                  onChange={(e) => setFormData({ ...formData, merchant: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Starbucks, Amazon"
+                  maxLength={200}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Transaction details..."
+                  maxLength={500}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                
+                {/* Search Categories */}
+                <div className="relative mb-2">
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Search categories..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                  />
+                  {categorySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Create New Category Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="w-full mb-2 px-3 py-2 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Create New Category
+                </button>
+
+                {/* Category List */}
+                <select
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  size={5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">None</option>
+                  {getFilteredCategories().map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <Button
+                onClick={() => setIsEditModalOpen(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  toast.success('Changes saved!');
+                }}
+                className="flex-1"
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}

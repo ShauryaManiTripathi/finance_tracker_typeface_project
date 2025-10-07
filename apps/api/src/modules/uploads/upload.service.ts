@@ -421,6 +421,8 @@ export async function commitReceipt(input: CommitReceiptInput, userId: string) {
       description: input.transaction.description,
       occurredAt: new Date(input.transaction.date),
       categoryId: input.transaction.categoryId,
+      merchant: input.metadata?.merchant || null,
+      source: 'RECEIPT',
     },
     include: {
       category: true,
