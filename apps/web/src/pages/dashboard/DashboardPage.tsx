@@ -273,7 +273,9 @@ const DashboardPage = () => {
                   fill="#8884d8"
                   dataKey="amount"
                 >
-                  {topCategories.map((entry, index) => (
+              
+
+found 0 vulnerabilities    {topCategories.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
