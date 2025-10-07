@@ -49,6 +49,12 @@ const TransactionsPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   
+  // Category creation modal state
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  
   // Form state
   const [formData, setFormData] = useState({
     type: 'EXPENSE' as TransactionType,
@@ -329,7 +335,48 @@ const TransactionsPage = () => {
 
   // Get filtered categories based on transaction type
   const getFilteredCategories = () => {
-    return categories.filter((cat) => cat.type === formData.type);
+    const filtered = categories.filter((cat) => cat.type === formData.type);
+    if (!categorySearch) return filtered;
+    return filtered.filter((cat) => 
+      cat.name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+  };
+
+  // Handle quick category creation
+  const handleQuickCategoryCreate = async () => {
+    if (!newCategoryName.trim()) {
+      toast.error('Please enter a category name');
+      return;
+    }
+
+    try {
+      setCreatingCategory(true);
+      const response = await categoryService.createCategory({
+        name: newCategoryName.trim(),
+        type: formData.type,
+      });
+
+      if (response.success && response.data) {
+        toast.success('Category created successfully!');
+        // Add to local categories list
+        setCategories([...categories, response.data]);
+        // Select the new category
+        setFormData({ ...formData, categoryId: response.data.id });
+        // Close modal and reset
+        setIsCategoryModalOpen(false);
+        setNewCategoryName('');
+        setCategorySearch('');
+      }
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      if (error.response?.status === 409) {
+        toast.error('A category with this name already exists');
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to create category');
+      }
+    } finally {
+      setCreatingCategory(false);
+    }
   };
 
   return (
@@ -777,18 +824,52 @@ const TransactionsPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <select
-                    value={formData.categoryId}
-                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">None</option>
-                    {getFilteredCategories().map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    {/* Search Input */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        placeholder="Search categories..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {categorySearch && (
+                        <button
+                          type="button"
+                          onClick={() => setCategorySearch('')}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Create New Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryModalOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      Create New Category
+                    </button>
+
+                    {/* Category List */}
+                    <select
+                      value={formData.categoryId}
+                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      size={5}
+                    >
+                      <option value="">None</option>
+                      {getFilteredCategories().map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -897,6 +978,89 @@ const TransactionsPage = () => {
                   variant="outline"
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={submitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Category Creation Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">Create Category</h2>
+              <button
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  setNewCategoryName('');
+                }}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g., Groceries, Salary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  maxLength={100}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleQuickCategoryCreate();
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {formData.type === 'INCOME' ? (
+                    <>
+                      <ArrowUpIcon className="w-5 h-5 text-green-600" />
+                      <span className="font-medium text-green-700">Income Category</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownIcon className="w-5 h-5 text-red-600" />
+                      <span className="font-medium text-red-700">Expense Category</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Type matches your current transaction type
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleQuickCategoryCreate}
+                  disabled={creatingCategory || !newCategoryName.trim()}
+                  className="flex-1"
+                >
+                  {creatingCategory ? 'Creating...' : 'Create Category'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCategoryModalOpen(false);
+                    setNewCategoryName('');
+                  }}
+                  disabled={creatingCategory}
                   className="flex-1"
                 >
                   Cancel
