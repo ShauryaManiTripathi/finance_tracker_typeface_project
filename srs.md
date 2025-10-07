@@ -707,7 +707,7 @@ Charts
 
 11) Gemini Integration (Statement Import)
 - Models
-  - Default: gemini-2.5-flash; accuracy mode: gemini-1.5-pro via ?model=pro.
+  - Default: gemini-2.5-flash; accuracy mode: gemini-2.5-flash via ?model=pro.
 
 - Structured Output
   - Use responseMimeType=application/json and responseSchema to constrain output.

@@ -3,7 +3,7 @@ Stack overview
 - Monorepo: npm workspaces with apps/api and apps/web.
 - Database: PostgreSQL via Prisma ORM.
 - Validation: Zod on API inputs; Ajv for AI JSON schema validation.
-- AI/Vision: Google Gemini (gemini-2.0-flash-exp, gemini-2.5-flash, gemini-1.5-pro) via @google/genai (v1.22.0) - unified SDK with File API for both receipt OCR and statement parsing.
+- AI/Vision: Google Gemini (gemini-2.0-flash-exp, gemini-2.5-flash, gemini-2.5-flash) via @google/genai (v1.22.0) - unified SDK with File API for both receipt OCR and statement parsing.
 Stack by folder
 
 | Area | Folder | Tech | Why |

@@ -4,41 +4,17 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb)](https://reactjs.org/)
-[![Node.js](https://img.shields.i### Testing
-```bash
-# All tests
-npm test
-
-# API tests only
-npm test --workspace=apps/api
-
-# Watch mode
-npm test -- --watch
-```
-
-### Test Coverage
-- Unit tests for validation logic
-- Integration tests for API endpoints
-- Test fixtures for receipts and statements
-
-### Test Database
-Tests use a separate database on port 5433 (configured in `.env.test`)
-
-### Sample Files for Testing
-The `SampleFiles/` folder contains example documents you can use to test the upload and import features:
-- **`Bus_ticket.jpg`** - Single bus ticket receipt (tests receipt extraction)
-- **`Petrol_invoice.png`** - Petrol station invoice (tests invoice processing)
-- **`statement1.pdf`** - Bank statement with multiple transactions (tests bulk import)
-- **`statement2.pdf`** - Another bank statement example (tests duplicate detection)
-
-**Quick Test Flow:**
-1. Register and login to the app
-2. Navigate to "Import" page
-3. Upload `Bus_ticket.jpg` → See single transaction extracted
-4. Upload `statement1.pdf` → See multiple transactions in preview table
-5. Edit, select, and import transactions
-6. Check Dashboard for charts and summaries-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-blue)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-5.0-2d3748)](https://www.prisma.io/)
+[![Express.js](https://img.shields.io/badge/Express.js-4.18-000000)](https://expressjs.com/)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646cff)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3-38b2ac)](https://tailwindcss.com/)
+[![JWT](https://img.shields.io/badge/JWT-Auth-000000)](https://jwt.io/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-AI-4285f4)](https://ai.google.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ed)](https://www.docker.com/)
+[![Jest](https://img.shields.io/badge/Jest-Testing-c21325)](https://jestjs.io/)
+
 
 ---
 
@@ -110,6 +86,44 @@ npm run dev
 5. Start tracking your finances!
 
 ---
+## 🧪 Testing
+```bash
+# All tests
+npm test
+
+# API tests only
+npm test --workspace=apps/api
+
+# Watch mode
+npm test -- --watch
+```
+
+### Test Coverage
+- Unit tests for validation logic
+- Integration tests for API endpoints
+- Test fixtures for receipts and statements
+
+### Test Database
+Tests use a separate database on port 5433 (configured in `.env.test`)
+
+### Sample Files for Testing
+The `SampleFiles/` folder contains example documents you can use to test the upload and import features:
+- **`Bus_ticket.jpg`** - Single bus ticket receipt (tests receipt extraction)
+- **`Petrol_invoice.png`** - Petrol station invoice (tests invoice processing)
+- **`statement1.pdf`** - Bank statement with multiple transactions (tests bulk import)
+- **`statement2.pdf`** - Another bank statement example (tests duplicate detection)
+
+**Quick Test Flow:**
+1. Register and login to the app
+2. Navigate to "Import" page
+3. Upload `Bus_ticket.jpg` → See single transaction extracted
+4. Upload `statement1.pdf` → See multiple transactions in preview table
+5. Edit, select, and import transactions
+6. Check Dashboard for charts and summaries
+
+---
+
+
 
 ## 📋 Project Overview
 
@@ -673,41 +687,9 @@ npx prisma migrate dev --name your_migration_name
 
 ---
 
-## 🚀 Production Deployment (Optional)
 
-### Environment Setup
-1. Set `NODE_ENV=production`
-2. Use strong `JWT_SECRET` (32+ characters)
-3. Configure production database URL
-4. Set up managed PostgreSQL (AWS RDS, DigitalOcean, etc.)
-5. Enable HTTPS
-6. Configure CORS to frontend domain only
 
-### Build
-```bash
-npm run build
-```
-
-### Serve
-```bash
-# API
-cd apps/api
-npm start
-
-# Web (use Nginx or similar)
-cd apps/web
-# Serve dist/ folder
-```
-
----
-
-## 📝 License
-
-MIT License - feel free to use this project for learning and development.
-
----
-
-## 👤 Author
+## 👤 Author - Shaurya Mani Tripathi
 
 **Typeface.ai Software Engineer Assignment**
 
