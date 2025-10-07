@@ -63,11 +63,16 @@ export class TransactionController {
         search,
       } = req.query;
 
+      // Convert string dates to Date objects
+      // For endDate, set to end of day (23:59:59.999) to include all transactions on that date
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(new Date(endDate).setUTCHours(23, 59, 59, 999)) : undefined;
+
       const result = await transactionService.listTransactions(
         userId,
         {
-          startDate,
-          endDate,
+          startDate: start,
+          endDate: end,
           type,
           categoryId,
           minAmount,
