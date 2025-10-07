@@ -14,7 +14,7 @@ const configSchema = z.object({
   maxReceiptSizeMb: z.number().default(10),
   maxStatementSizeMb: z.number().default(20),
   rateLimitWindowMs: z.number().default(15 * 60 * 1000), // 15 minutes
-  rateLimitMaxRequests: z.number().default(100),
+  rateLimitMaxRequests: z.number().default(5000),
 });
 
 const parseEnvNumber = (value: string | undefined, defaultValue: number): number => {

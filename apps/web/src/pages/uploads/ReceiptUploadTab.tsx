@@ -407,7 +407,7 @@ const ReceiptUploadTab = () => {
               <div>
                 <p className="text-sm text-gray-600">Amount</p>
                 <p className="font-medium text-gray-900">
-                  {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'N/A'}
+                {formData.amount ? `₹${parseFloat(formData.amount).toFixed(2)}` : 'N/A'}
                 </p>
               </div>
               
