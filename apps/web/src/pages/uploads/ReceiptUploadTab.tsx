@@ -27,7 +27,7 @@ const ReceiptUploadTab = () => {
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    categoryId: '',
+    categoryName: '',
     merchant: '',
   });
   
@@ -128,7 +128,7 @@ const ReceiptUploadTab = () => {
           amount: suggested.amount.toString(),
           description: suggested.description || '',
           date: suggested.date,
-          categoryId: suggested.categoryId || '',
+          categoryName: suggested.categoryName || '',
           merchant: extracted.merchant || '',
         });
         
@@ -159,8 +159,8 @@ const ReceiptUploadTab = () => {
       toast.error('Please enter a description');
       return;
     }
-    if (!formData.categoryId) {
-      toast.error('Please select a category');
+    if (!formData.categoryName || !formData.categoryName.trim()) {
+      toast.error('Please enter or select a category');
       return;
     }
 
@@ -174,7 +174,7 @@ const ReceiptUploadTab = () => {
           amount: parseFloat(formData.amount),
           description: formData.description,
           date: formData.date, // Already in YYYY-MM-DD format from date input
-          categoryId: formData.categoryId,
+          categoryName: formData.categoryName.trim(),
         },
         metadata: {
           merchant: formData.merchant || undefined,
@@ -194,7 +194,7 @@ const ReceiptUploadTab = () => {
         amount: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
-        categoryId: '',
+        categoryName: '',
         merchant: '',
       });
       
@@ -219,7 +219,7 @@ const ReceiptUploadTab = () => {
       amount: '',
       description: '',
       date: new Date().toISOString().split('T')[0],
-      categoryId: '',
+      categoryName: '',
       merchant: '',
     });
     if (fileInputRef.current) {
@@ -254,8 +254,8 @@ const ReceiptUploadTab = () => {
         toast.success('Category created successfully!');
         // Add to local categories list
         setCategories([...categories, response.data]);
-        // Select the new category
-        setFormData({ ...formData, categoryId: response.data.id });
+        // Select the new category by name
+        setFormData({ ...formData, categoryName: response.data.name });
         // Close modal and reset
         setIsCategoryModalOpen(false);
         setNewCategoryName('');
@@ -429,9 +429,7 @@ const ReceiptUploadTab = () => {
               <div className="col-span-2">
                 <p className="text-sm text-gray-600">Category</p>
                 <p className="font-medium text-gray-900">
-                  {formData.categoryId 
-                    ? categories.find(c => c.id === formData.categoryId)?.name 
-                    : 'None'}
+                  {formData.categoryName || 'None'}
                 </p>
               </div>
             </div>
@@ -479,7 +477,7 @@ const ReceiptUploadTab = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, type: 'INCOME', categoryId: '' })}
+                    onClick={() => setFormData({ ...formData, type: 'INCOME', categoryName: '' })}
                     className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
                       formData.type === 'INCOME'
                         ? 'border-green-600 bg-green-50 text-green-700'
@@ -490,7 +488,7 @@ const ReceiptUploadTab = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, type: 'EXPENSE', categoryId: '' })}
+                    onClick={() => setFormData({ ...formData, type: 'EXPENSE', categoryName: '' })}
                     className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
                       formData.type === 'EXPENSE'
                         ? 'border-red-600 bg-red-50 text-red-700'
@@ -593,20 +591,27 @@ const ReceiptUploadTab = () => {
                   Create New Category
                 </button>
 
-                {/* Category List */}
-                <select
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                  size={5}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">None</option>
-                  {getFilteredCategories().map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                {/* Category Input - can type new or select existing */}
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    list="category-suggestions"
+                    value={formData.categoryName}
+                    onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                    placeholder="Type or select a category..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <datalist id="category-suggestions">
+                    {getFilteredCategories().map((cat) => (
+                      <option key={cat.id} value={cat.name} />
+                    ))}
+                  </datalist>
+                  {formData.categoryName && !categories.find(c => c.name === formData.categoryName && c.type === formData.type) && (
+                    <p className="text-xs text-blue-600">
+                      ✨ "{formData.categoryName}" will be created as a new category
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

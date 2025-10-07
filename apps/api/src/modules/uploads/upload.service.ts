@@ -47,6 +47,10 @@ const RECEIPT_SCHEMA = {
       type: 'string',
       description: 'Brief description or itemized list',
     },
+    suggestedCategory: {
+      type: 'string',
+      description: 'Suggested category name for this expense (e.g., "Food & Dining", "Transportation", "Shopping", "Groceries", "Entertainment", "Healthcare", "Utilities", "Travel", "Other")',
+    },
     confidence: {
       type: 'number',
       description: 'Confidence score between 0 and 1',
@@ -104,6 +108,10 @@ const STATEMENT_SCHEMA = {
             enum: ['INCOME', 'EXPENSE'],
             description: 'Transaction type',
           },
+          suggestedCategory: {
+            type: 'string',
+            description: 'Suggested category name based on merchant/description (e.g., "Salary" for income, "Groceries", "Fuel", "Shopping", "Dining", "Utilities", "Entertainment", "Healthcare", "Transportation", "Other" for expenses)',
+          },
           balance: {
             type: 'number',
             description: 'Account balance after transaction',
@@ -127,7 +135,17 @@ Instructions:
 3. Extract the TOTAL amount (not individual items)
 4. Determine the currency (default to INR if unclear)
 5. Create a brief description (mention main items if visible)
-6. Provide a confidence score (0-1) based on image clarity
+6. Suggest an appropriate category name based on the merchant/items:
+   - "Food & Dining" for restaurants, cafes
+   - "Groceries" for supermarkets, grocery stores
+   - "Transportation" for fuel, uber, parking
+   - "Shopping" for retail, online shopping
+   - "Entertainment" for movies, games, subscriptions
+   - "Healthcare" for medical, pharmacy
+   - "Utilities" for bills, services
+   - "Travel" for hotels, flights
+   - Or create a relevant category name
+7. Provide a confidence score (0-1) based on image clarity
 
 If any field is unclear, set it to null. Return valid JSON only.`;
 
@@ -147,12 +165,15 @@ Instructions:
    - description: Full transaction description exactly as written in statement
    - merchant: Extract the merchant/payee name from the description (examples: "DILLONS", "Salary", "CHECK 1248", "TERMINAL S097094", "CASH WITHDRAWAL")
    - amount: Always positive number (use 'type' field for INCOME vs EXPENSE)
-   - type: "INCOME" for credits/deposits, "EXPENSE" for debits/withdrawals  
+   - type: "INCOME" for credits/deposits, "EXPENSE" for debits/withdrawals
+   - suggestedCategory: Suggest appropriate category name based on merchant/description:
+     * For INCOME: "Salary", "Business Income", "Investment", "Refund", "Other Income"
+     * For EXPENSE: "Groceries", "Fuel", "Dining", "Shopping", "Utilities", "Entertainment", "Healthcare", "Transportation", "Bills", "Cash Withdrawal", or create relevant name
    - balance: Account balance after transaction (if shown)
 3. Ignore summary rows, headers, and footers
 4. Maintain chronological order
 
-Return valid JSON with all extracted transactions. Be thorough and extract merchant names!`;
+Return valid JSON with all extracted transactions. Include merchant names and suggested categories!`;
 
 /**
  * Interface for Gemini receipt extraction result
@@ -163,6 +184,7 @@ interface GeminiReceiptData {
   amount: number;
   currency?: string;
   description?: string | null;
+  suggestedCategory?: string | null;
   confidence?: number;
 }
 
@@ -185,6 +207,7 @@ interface GeminiStatementData {
     merchant?: string;
     amount: number;
     type: 'INCOME' | 'EXPENSE';
+    suggestedCategory?: string;
     balance?: number;
   }>;
 }
@@ -222,14 +245,12 @@ export async function extractReceiptData(
       msg: 'Receipt extracted successfully',
       merchant: extracted.merchant,
       amount: extracted.amount,
+      suggestedCategory: extracted.suggestedCategory,
       confidence: extracted.confidence,
     });
 
-    // Step 2: Suggest category based on merchant/description
-    const suggestedCategoryId = await suggestCategory(
-      extracted.merchant || extracted.description || 'Expense',
-      'EXPENSE'
-    );
+    // Step 2: Use AI-suggested category name (no database lookup yet)
+    const suggestedCategoryName = extracted.suggestedCategory || 'Other';
 
     // Step 3: Create preview record in database
     const previewId = uuidv4();
@@ -247,7 +268,7 @@ export async function extractReceiptData(
             amount: extracted.amount,
             description: extracted.description || `Purchase at ${extracted.merchant || 'Unknown'}`,
             date: extracted.date,
-            categoryId: suggestedCategoryId,
+            categoryName: suggestedCategoryName,
           },
         } as any, // Cast to any to satisfy Prisma JSON type
         expiresAt,
@@ -271,7 +292,7 @@ export async function extractReceiptData(
         amount: extracted.amount,
         description: extracted.description || `Purchase at ${extracted.merchant || 'Unknown'}`,
         date: extracted.date,
-        categoryId: suggestedCategoryId,
+        categoryName: suggestedCategoryName,
       },
       expiresAt: preview.expiresAt.toISOString(),
       createdAt: preview.createdAt.toISOString(),
@@ -318,20 +339,18 @@ export async function extractStatementData(
       accountInfo: extracted.accountInfo,
     });
 
-    // Step 2: Suggest categories for each transaction
-    const suggestedTransactions = await Promise.all(
-      extracted.transactions.map(async (txn) => {
-        const categoryId = await suggestCategory(txn.description, txn.type);
-        return {
-          type: txn.type,
-          amount: txn.amount,
-          description: txn.description,
-          date: txn.date,
-          merchant: txn.merchant || null,
-          categoryId,
-        };
-      })
-    );
+    // Step 2: Use AI-suggested category names (no database lookup)
+    const suggestedTransactions = extracted.transactions.map((txn) => {
+      const categoryName = txn.suggestedCategory || (txn.type === 'INCOME' ? 'Other Income' : 'Other');
+      return {
+        type: txn.type,
+        amount: txn.amount,
+        description: txn.description,
+        date: txn.date,
+        merchant: txn.merchant || null,
+        categoryName,
+      };
+    });
 
     // Step 3: Calculate summary
     const summary = {
@@ -431,13 +450,32 @@ export async function commitReceipt(input: CommitReceiptInput, userId: string) {
     throw new HttpError(410, 'Gone', 'Preview has expired. Please re-upload the receipt.');
   }
 
-  // Step 2: Verify category exists and belongs to user
-  const category = await prisma.category.findUnique({
-    where: { id: input.transaction.categoryId },
+  // Step 2: Find or create category by name
+  const categoryName = input.transaction.categoryName.trim();
+  let category = await prisma.category.findFirst({
+    where: {
+      userId,
+      name: categoryName,
+      type: input.transaction.type,
+    },
   });
 
-  if (!category || category.userId !== userId) {
-    throw new HttpError(400, 'BadRequest', 'Invalid category ID');
+  if (!category) {
+    // Category doesn't exist, create it
+    logger.info({
+      msg: 'Creating new category from receipt',
+      categoryName,
+      type: input.transaction.type,
+      userId,
+    });
+    
+    category = await prisma.category.create({
+      data: {
+        userId,
+        name: categoryName,
+        type: input.transaction.type,
+      },
+    });
   }
 
   // Step 3: Create transaction
@@ -448,7 +486,7 @@ export async function commitReceipt(input: CommitReceiptInput, userId: string) {
       amount: input.transaction.amount,
       description: input.transaction.description,
       occurredAt: new Date(input.transaction.date),
-      categoryId: input.transaction.categoryId,
+      categoryId: category.id,
       merchant: input.metadata?.merchant || null,
       source: 'RECEIPT',
     },
@@ -503,17 +541,46 @@ export async function commitStatement(input: CommitStatementInput, userId: strin
     throw new HttpError(410, 'Gone', 'Preview has expired. Please re-upload the statement.');
   }
 
-  // Step 2: Verify all categories exist and belong to user
-  const categoryIds = [...new Set(input.transactions.map((t) => t.categoryId))];
-  const categories = await prisma.category.findMany({
+  // Step 2: Find or create categories by name for all transactions
+  const categoryNames = [...new Set(input.transactions.map((t) => t.categoryName.trim()))];
+  
+  // Fetch existing categories
+  const existingCategories = await prisma.category.findMany({
     where: {
-      id: { in: categoryIds },
       userId,
+      name: { in: categoryNames },
     },
   });
 
-  if (categories.length !== categoryIds.length) {
-    throw new HttpError(400, 'BadRequest', 'One or more invalid category IDs');
+  const existingCategoryMap = new Map(existingCategories.map(c => [`${c.name}|${c.type}`, c.id]));
+  const categoryNameToIdMap = new Map<string, string>();
+
+  // Create missing categories
+  for (const txn of input.transactions) {
+    const categoryName = txn.categoryName.trim();
+    const key = `${categoryName}|${txn.type}`;
+    
+    if (!existingCategoryMap.has(key) && !categoryNameToIdMap.has(key)) {
+      // Category doesn't exist, create it
+      logger.info({
+        msg: 'Creating new category from statement',
+        categoryName,
+        type: txn.type,
+        userId,
+      });
+      
+      const newCategory = await prisma.category.create({
+        data: {
+          userId,
+          name: categoryName,
+          type: txn.type,
+        },
+      });
+      
+      categoryNameToIdMap.set(key, newCategory.id);
+    } else if (existingCategoryMap.has(key)) {
+      categoryNameToIdMap.set(key, existingCategoryMap.get(key)!);
+    }
   }
 
   // Step 3: Optional deduplication (check for existing transactions on same dates)
@@ -552,18 +619,23 @@ export async function commitStatement(input: CommitStatementInput, userId: strin
     });
   }
 
-  // Step 4: Bulk create transactions
+  // Step 4: Bulk create transactions with category IDs
   const created = await prisma.transaction.createMany({
-    data: transactionsToCreate.map((txn) => ({
-      userId,
-      type: txn.type,
-      amount: txn.amount,
-      description: txn.description,
-      occurredAt: new Date(txn.date),
-      categoryId: txn.categoryId,
-      merchant: txn.merchant || null,
-      source: 'STATEMENT_IMPORT',
-    })),
+    data: transactionsToCreate.map((txn) => {
+      const key = `${txn.categoryName.trim()}|${txn.type}`;
+      const categoryId = categoryNameToIdMap.get(key);
+      
+      return {
+        userId,
+        type: txn.type,
+        amount: txn.amount,
+        description: txn.description,
+        occurredAt: new Date(txn.date),
+        categoryId: categoryId || null,
+        merchant: txn.merchant || null,
+        source: 'STATEMENT_IMPORT',
+      };
+    }),
   });
 
   // Step 5: Delete preview (cleanup)

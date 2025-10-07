@@ -20,7 +20,7 @@ interface EditableTransaction {
   amount: number;
   description: string;
   date: string;
-  categoryId?: string;
+  categoryName?: string;
   merchant?: string;
   editing?: boolean;
 }
@@ -65,7 +65,7 @@ const StatementUploadTab = () => {
         description: txn.description || '',
         date: txn.date,
         merchant: txn.merchant || undefined,
-        categoryId: txn.categoryId || undefined,
+        categoryName: txn.categoryName || undefined,
         editing: false,
       }));
       setTransactions(mapped);
@@ -172,15 +172,22 @@ const StatementUploadTab = () => {
   };
 
   // Bulk category update
-  const bulkUpdateCategory = (categoryId: string) => {
+  const bulkUpdateCategory = (categoryIdOrName: string) => {
     if (selectedRows.size === 0) {
       toast.error('Please select transactions to update');
       return;
     }
     
+    // Find category by ID or name
+    const category = categories.find(c => c.id === categoryIdOrName || c.name === categoryIdOrName);
+    if (!category) {
+      toast.error('Category not found');
+      return;
+    }
+    
     setTransactions((prev) =>
       prev.map((txn) =>
-        selectedRows.has(txn.index) ? { ...txn, categoryId } : txn
+        selectedRows.has(txn.index) ? { ...txn, categoryName: category.name } : txn
       )
     );
     
@@ -192,6 +199,13 @@ const StatementUploadTab = () => {
   const handleCommit = async () => {
     if (!extractedData || transactions.length === 0) return;
 
+    // Validation: Check if all transactions have categories
+    const transactionsWithoutCategory = transactions.filter(txn => !txn.categoryName || !txn.categoryName.trim());
+    if (transactionsWithoutCategory.length > 0) {
+      toast.error(`Please assign categories to all transactions. ${transactionsWithoutCategory.length} transaction(s) missing category.`);
+      return;
+    }
+
     try {
       setCommitting(true);
       
@@ -201,7 +215,7 @@ const StatementUploadTab = () => {
         amount: txn.amount,
         description: txn.description,
         date: txn.date, // Already in YYYY-MM-DD format
-        categoryId: txn.categoryId || undefined,
+        categoryName: txn.categoryName!.trim(),
         merchant: txn.merchant || undefined,
       }));
 
@@ -544,7 +558,7 @@ const StatementUploadTab = () => {
                             value={txn.type}
                             onChange={(e) => {
                               updateTransaction(txn.index, 'type', e.target.value);
-                              updateTransaction(txn.index, 'categoryId', '');
+                              updateTransaction(txn.index, 'categoryName', '');
                             }}
                             className="px-2 py-1 text-xs border border-gray-300 rounded"
                           >
@@ -578,22 +592,27 @@ const StatementUploadTab = () => {
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900">
                         {txn.editing ? (
-                          <select
-                            value={txn.categoryId || ''}
-                            onChange={(e) => updateTransaction(txn.index, 'categoryId', e.target.value)}
-                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                          >
-                            <option value="">None</option>
-                            {getCategoriesByType(txn.type).map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </option>
-                            ))}
-                          </select>
+                          <input
+                            type="text"
+                            list={`category-suggestions-${txn.index}`}
+                            value={txn.categoryName || ''}
+                            onChange={(e) => updateTransaction(txn.index, 'categoryName', e.target.value)}
+                            placeholder="Type or select..."
+                            className={`w-full px-2 py-1 text-xs border rounded ${
+                              !txn.categoryName ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                            }`}
+                          />
                         ) : (
-                          <span className="text-gray-600">
-                            {categories.find((c) => c.id === txn.categoryId)?.name || '-'}
+                          <span className={txn.categoryName ? 'text-gray-600' : 'text-red-500 font-medium'}>
+                            {txn.categoryName || 'No category'}
                           </span>
+                        )}
+                        {txn.editing && (
+                          <datalist id={`category-suggestions-${txn.index}`}>
+                            {getCategoriesByType(txn.type).map((cat) => (
+                              <option key={cat.id} value={cat.name} />
+                            ))}
+                          </datalist>
                         )}
                       </td>
                       <td className="px-4 py-4 text-center">
@@ -647,24 +666,43 @@ const StatementUploadTab = () => {
           </div>
 
           {/* Options */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="skipDuplicates"
-              checked={skipDuplicates}
-              onChange={(e) => setSkipDuplicates(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <label htmlFor="skipDuplicates" className="text-sm text-gray-700">
-              Skip duplicate transactions (recommended)
-            </label>
+          <div className="space-y-3">
+            {/* Warning for missing categories */}
+            {transactions.filter(t => !t.categoryName || !t.categoryName.trim()).length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <ExclamationCircleIcon className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800">
+                    <span className="font-medium">
+                      {transactions.filter(t => !t.categoryName || !t.categoryName.trim()).length} transaction(s) missing category
+                    </span>
+                    <p className="text-yellow-700 mt-0.5">
+                      Please assign categories to all transactions before importing.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="skipDuplicates"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="skipDuplicates" className="text-sm text-gray-700">
+                Skip duplicate transactions (recommended)
+              </label>
+            </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-3">
             <Button
               onClick={handleCommit}
-              disabled={committing}
+              disabled={committing || transactions.filter(t => !t.categoryName || !t.categoryName.trim()).length > 0}
               className="flex-1"
             >
               {committing ? 'Importing...' : `Import ${transactions.length} Transactions`}

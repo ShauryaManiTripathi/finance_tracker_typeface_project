@@ -46,7 +46,7 @@ export const commitReceiptSchema = z.object({
     amount: z.number().positive('Amount must be positive'),
     description: z.string().min(1, 'Description is required').max(500),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-    categoryId: z.string().min(1, 'Category ID is required'), // Accept any string ID (CUID or UUID)
+    categoryName: z.string().min(1, 'Category name is required'), // Category name (will be created if doesn't exist)
   }),
   
   // Optional metadata
@@ -71,7 +71,7 @@ export const commitStatementSchema = z.object({
       amount: z.number().positive('Amount must be positive'),
       description: z.string().min(1, 'Description is required').max(500),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-      categoryId: z.string().min(1, 'Category ID is required'), // Accept any string ID (CUID or UUID)
+      categoryName: z.string().min(1, 'Category name is required'), // Category name (will be created if doesn't exist)
       merchant: z.string().optional(), // Optional merchant field
     })
   ).min(1, 'At least one transaction is required'),
@@ -79,7 +79,6 @@ export const commitStatementSchema = z.object({
   // Import options
   options: z.object({
     skipDuplicates: z.boolean().default(true),
-    defaultCategoryId: z.string().uuid().optional(), // Fallback category if none specified
   }).optional(),
 });
 
@@ -111,7 +110,7 @@ export const receiptPreviewSchema = z.object({
     amount: z.number(),
     description: z.string(),
     date: z.string(),
-    categoryId: z.string().uuid().nullable(),
+    categoryName: z.string(), // Suggested category name (may not exist yet)
   }),
   expiresAt: z.string(), // ISO datetime
   createdAt: z.string(),
@@ -156,7 +155,7 @@ export const statementPreviewSchema = z.object({
       description: z.string(),
       date: z.string(),
       merchant: z.string().nullable(),
-      categoryId: z.string().nullable(),
+      categoryName: z.string(), // Suggested category name (may not exist yet)
     })
   ),
   expiresAt: z.string(),

@@ -18,7 +18,7 @@ export interface ReceiptPreview {
     amount: number;
     description: string;
     date: string;
-    categoryId: string | null;
+    categoryName: string; // Category name (may not exist yet)
   };
   expiresAt: string;
   createdAt: string;
@@ -57,7 +57,7 @@ export interface StatementPreview {
     description: string;
     date: string;
     merchant: string | null;
-    categoryId: string | null;
+    categoryName: string; // Category name (may not exist yet)
   }>;
   expiresAt: string;
   createdAt: string;
@@ -71,7 +71,7 @@ export interface CommitReceiptData {
     amount: number;
     description: string;
     date: string;
-    categoryId?: string;
+    categoryName: string; // Category name (will be created if doesn't exist)
   };
   metadata?: {
     merchant?: string;
@@ -87,7 +87,8 @@ export interface CommitStatementData {
     amount: number;
     description: string;
     date: string;
-    categoryId?: string;
+    categoryName: string; // Category name (will be created if doesn't exist)
+    merchant?: string;
   }>;
   options?: {
     skipDuplicates?: boolean;
