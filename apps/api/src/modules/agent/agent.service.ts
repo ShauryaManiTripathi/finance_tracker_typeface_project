@@ -269,7 +269,7 @@ export async function chat(userId: string, message: string, history: any[] = [])
   
   const genAI = new GoogleGenerativeAI(config.geminiApiKey);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-2.5-flash',
     tools: tools,
     systemInstruction: `You are a helpful financial assistant analyzing user's personal finance data.
     
