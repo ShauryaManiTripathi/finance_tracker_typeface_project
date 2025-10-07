@@ -232,11 +232,27 @@ export async function extractReceiptData(
   });
 
   try {
-    // Step 1: Upload to Gemini and extract with structured output
+    // Step 1: Fetch user's existing categories for AI context
+    const userCategories = await prisma.category.findMany({
+      where: { userId },
+      select: { name: true, type: true },
+    });
+
+    const expenseCategories = userCategories
+      .filter(c => c.type === 'EXPENSE')
+      .map(c => c.name)
+      .join(', ');
+
+    // Step 2: Build context-aware prompt
+    const contextualPrompt = expenseCategories
+      ? `${RECEIPT_PROMPT}\n\nUser's existing expense categories: ${expenseCategories}\n\nPrefer suggesting from these existing categories if applicable. Only suggest a new category name if none of the existing ones fit.`
+      : RECEIPT_PROMPT;
+
+    // Step 3: Upload to Gemini and extract with structured output
     const extracted = await uploadAndExtract<GeminiReceiptData>(
       filePath,
       mimeType,
-      RECEIPT_PROMPT,
+      contextualPrompt,
       RECEIPT_SCHEMA,
       'receipt'
     );
@@ -249,10 +265,10 @@ export async function extractReceiptData(
       confidence: extracted.confidence,
     });
 
-    // Step 2: Use AI-suggested category name (no database lookup yet)
+    // Step 4: Use AI-suggested category name (no database lookup yet)
     const suggestedCategoryName = extracted.suggestedCategory || 'Other';
 
-    // Step 3: Create preview record in database
+    // Step 5: Create preview record in database
     const previewId = uuidv4();
     const expiresAt = new Date(Date.now() + config.aiPreviewTtlSec * 1000);
 
@@ -324,11 +340,40 @@ export async function extractStatementData(
   });
 
   try {
-    // Step 1: Upload PDF to Gemini and extract with structured output
+    // Step 1: Fetch user's existing categories for AI context
+    const userCategories = await prisma.category.findMany({
+      where: { userId },
+      select: { name: true, type: true },
+    });
+
+    const incomeCategories = userCategories
+      .filter(c => c.type === 'INCOME')
+      .map(c => c.name)
+      .join(', ');
+
+    const expenseCategories = userCategories
+      .filter(c => c.type === 'EXPENSE')
+      .map(c => c.name)
+      .join(', ');
+
+    // Step 2: Build context-aware prompt
+    let contextualPrompt = STATEMENT_PROMPT;
+    if (incomeCategories || expenseCategories) {
+      contextualPrompt += '\n\nUser\'s existing categories:\n';
+      if (incomeCategories) {
+        contextualPrompt += `- INCOME: ${incomeCategories}\n`;
+      }
+      if (expenseCategories) {
+        contextualPrompt += `- EXPENSE: ${expenseCategories}\n`;
+      }
+      contextualPrompt += '\nPrefer suggesting from these existing categories if applicable. Only suggest a new category name if none of the existing ones fit.';
+    }
+
+    // Step 3: Upload PDF to Gemini and extract with structured output
     const extracted = await uploadAndExtract<GeminiStatementData>(
       filePath,
       'application/pdf',
-      STATEMENT_PROMPT,
+      contextualPrompt,
       STATEMENT_SCHEMA,
       'statement'
     );
@@ -339,7 +384,7 @@ export async function extractStatementData(
       accountInfo: extracted.accountInfo,
     });
 
-    // Step 2: Use AI-suggested category names (no database lookup)
+    // Step 4: Use AI-suggested category names (no database lookup)
     const suggestedTransactions = extracted.transactions.map((txn) => {
       const categoryName = txn.suggestedCategory || (txn.type === 'INCOME' ? 'Other Income' : 'Other');
       return {
