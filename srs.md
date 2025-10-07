@@ -8,7 +8,7 @@ Author: You
   - Define complete functional and non-functional requirements for a full-stack Personal Finance Assistant that meets the assignment brief and includes bonus features. This SRS is implementation-oriented, specify- Pagination: page >= 1; pageSize 1–100; default 20.
 
 Receipt Extraction via Gemini Vision
-- Gemini Model: gemini-2.0-flash-exp (default) or gemini-1.5-flash for cost optimization.
+- Gemini Model: gemini-2.0-flash-exp (default) or gemini-2.5-flash for cost optimization.
 - Vision API: Supports images (JPEG, PNG) and PDF files.
 - Structured Output: Use responseMimeType=application/json with schema defining:
   - merchant: string (required)
@@ -50,7 +50,7 @@ AI Table Schema v1 (for Gemini and paste-import)ontracts, data model, validation
 - Recommended Tech Stack (non-binding)
   - Backend: Node.js 18+, TypeScript, Express, PostgreSQL 14+, Prisma ORM, JWT auth, Zod/Ajv for validation, Multer for uploads.
   - Frontend: React + Vite + TypeScript, TailwindCSS, Recharts, Axios.
-  - AI/Vision: Google Gemini (gemini-2.0-flash-exp or gemini-1.5-flash) for both receipt OCR and statement parsing via structured output.
+  - AI/Vision: Google Gemini (gemini-2.0-flash-exp or gemini-2.5-flash) for both receipt OCR and statement parsing via structured output.
 
 - Constraints & Assumptions
   - Default currency: INR (user-visible); DB stores currency string.
@@ -154,7 +154,7 @@ F7. Receipt Extraction (Images/PDF) via Gemini Vision
   - 415 unsupported type; 422 if unreadable; 500 Gemini API failure.
 
 F8. Statement Import via Gemini (Bonus)
-- Description: Users upload a PDF statement; backend uses Gemini (gemini-1.5-flash or -pro) to return a strict JSON table that the app validates, normalizes, previews, and then commits.
+- Description: Users upload a PDF statement; backend uses Gemini (gemini-2.5-flash or -pro) to return a strict JSON table that the app validates, normalizes, previews, and then commits.
 - Flow:
   1) POST PDF to /imports/ai/from-pdf → server calls Gemini with structured output schema, returns preview with normalized items, per-row validity, warnings/errors.
   2) User edits/filters rows on UI.
@@ -554,7 +554,7 @@ Charts
 
 11) Gemini Integration (Statement Import)
 - Models
-  - Default: gemini-1.5-flash; accuracy mode: gemini-1.5-pro via ?model=pro.
+  - Default: gemini-2.5-flash; accuracy mode: gemini-1.5-pro via ?model=pro.
 
 - Structured Output
   - Use responseMimeType=application/json and responseSchema to constrain output.
@@ -568,7 +568,7 @@ Charts
 
 - Environment Variables
   - GEMINI_API_KEY
-  - GEMINI_DEFAULT_MODEL=gemini-1.5-flash
+  - GEMINI_DEFAULT_MODEL=gemini-2.5-flash
   - AI_PREVIEW_TTL_SEC=900
 
 - Privacy
@@ -744,7 +744,7 @@ Appendix A: Example API Contracts
         }
       }
     ],
-    "ai": { "model": "gemini-1.5-flash", "latencyMs": 8200 }
+    "ai": { "model": "gemini-2.5-flash", "latencyMs": 8200 }
   }
 
 - POST /imports/ai/commit

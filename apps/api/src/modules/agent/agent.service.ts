@@ -3,11 +3,37 @@ import { config } from '../../config';
 import { statsService } from '../stats/stats.service';
 import { transactionRepository, TransactionFilters, PaginationParams } from '../transactions/transaction.repo';
 
+// Helper function to calculate date ranges
+function calculateDateRange(daysAgo: number): { startDate: string; endDate: string } {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysAgo);
+  
+  return {
+    startDate: startDate.toISOString().split('T')[0]!,
+    endDate: endDate.toISOString().split('T')[0]!
+  };
+}
+
 // Define tool/function declarations for Gemini
 // @ts-ignore - Gemini SDK has strict type requirements but these work at runtime
 const tools: Tool[] = [
   {
     functionDeclarations: [
+      {
+        name: 'calculateDateRange',
+        description: 'Calculate start and end dates for a relative time period (e.g., "last 30 days", "last 7 days", "last 90 days"). Use this FIRST when user mentions relative dates like "last X days", "past X days", etc. Returns dates in YYYY-MM-DD format.',
+        parameters: {
+          type: 'object',
+          properties: {
+            daysAgo: {
+              type: 'number',
+              description: 'Number of days to go back from today. For "last 30 days" use 30, for "last week" use 7, etc.'
+            }
+          },
+          required: ['daysAgo']
+        }
+      },
       {
         name: 'getSummary',
         description: 'Get financial summary including total income, total expenses, and net balance for a date range. Use this when user asks about overall financial status, totals, or balance.',
@@ -125,6 +151,16 @@ async function executeFunctionCall(functionCall: FunctionCall, userId: string): 
   
   try {
     switch (name) {
+      case 'calculateDateRange': {
+        const daysAgo = functionArgs.daysAgo;
+        const result = calculateDateRange(daysAgo);
+        return {
+          success: true,
+          data: result,
+          message: `Calculated date range for last ${daysAgo} days: ${result.startDate} to ${result.endDate}`
+        };
+      }
+      
       case 'getSummary': {
         // Convert date strings to Date objects
         const startDate = functionArgs.startDate ? new Date(functionArgs.startDate + 'T00:00:00.000Z') : undefined;
@@ -238,12 +274,20 @@ export async function chat(userId: string, message: string, history: any[] = [])
     systemInstruction: `You are a helpful financial assistant analyzing user's personal finance data.
     
 You have access to these tools:
+- calculateDateRange: Calculate exact start/end dates for relative time periods (ALWAYS USE THIS FIRST for "last X days")
 - getSummary: Get total income, expenses, and net balance
 - getExpensesByCategory: See spending breakdown by categories
 - getExpensesOverTime: Analyze trends over time (daily/weekly/monthly)
 - getTransactions: View detailed transaction list with filters
 
-CRITICAL RULES:
+CRITICAL RULES FOR DATE HANDLING:
+1. When user says "last X days" or "past X days", FIRST call calculateDateRange(daysAgo: X) to get exact dates
+2. "Last 30 days" means exactly 30 days back from today (e.g., if today is Oct 8, then Sept 8 to Oct 8)
+3. "Last 7 days" means exactly 7 days back from today
+4. ALWAYS use the dates returned by calculateDateRange for subsequent API calls
+5. Current date is ${new Date().toISOString().split('T')[0]}
+
+CRITICAL RULES FOR FUNCTION CALLS:
 1. Call each function ONLY ONCE per user query - do not repeat the same function call
 2. After receiving function results, IMMEDIATELY provide your response to the user
 3. DO NOT call the same function multiple times with the same parameters
@@ -251,7 +295,7 @@ CRITICAL RULES:
 
 Date Formatting:
 - Always provide dates in YYYY-MM-DD format (e.g., "2025-10-01", "2025-10-07")
-- When users mention relative dates like "last month", "this week", "this year", convert them to actual YYYY-MM-DD dates
+- When users mention relative dates like "last month", "this week", "this year", use calculateDateRange to get exact dates
 - Current date is ${new Date().toISOString().split('T')[0]}. Use this as reference for relative dates
 - For "this month": use startDate as first day of current month, endDate as today
 - For "last month": use startDate and endDate as first and last day of previous month

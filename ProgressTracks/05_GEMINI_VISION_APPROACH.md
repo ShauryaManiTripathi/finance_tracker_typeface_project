@@ -172,7 +172,7 @@ Statements continue to use Gemini with table extraction (no change needed).
 
 **Gemini Pricing:**
 - gemini-2.0-flash-exp: **FREE** (during preview)
-- gemini-1.5-flash: ~$0.00125 per 1K tokens
+- gemini-2.5-flash: ~$0.00125 per 1K tokens
 - Average receipt image: ~300 tokens
 - **Cost per receipt: $0.000375 (~₹0.03)**
 

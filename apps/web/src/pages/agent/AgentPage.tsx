@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   PaperAirplaneIcon,
   SparklesIcon,
-  UserIcon,
-  ChartBarIcon,
 } from '@heroicons/react/24/outline';
-import { Card, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import agentService, { type ChatMessage } from '../../services/agent.service';
 import toast from 'react-hot-toast';
 
@@ -16,6 +12,7 @@ const AgentPage = () => {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,12 +22,19 @@ const AgentPage = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+    }
+  }, [input]);
+
   const exampleQueries = [
     "What's my total spending this month?",
     "Show me my top 3 expense categories",
     "Compare my income vs expenses for last 30 days",
-    "How much did I spend on food last week?",
-    "Show me my recent transactions",
+    "How much did I spend on housing?",
   ];
 
   const handleSendMessage = async () => {
@@ -74,127 +78,127 @@ const AgentPage = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <SparklesIcon className="w-8 h-8" />
-            <h1 className="text-3xl font-bold">Financial AI Agent</h1>
-          </div>
-          <p className="text-blue-100">
-            Ask me anything about your finances. I can analyze your spending, income, and provide insights.
-          </p>
-        </div>
-      </div>
-
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-        <div className="max-w-4xl mx-auto space-y-4">
-          {/* Welcome message */}
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-white">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          {/* Welcome State */}
           {messages.length === 0 && (
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="text-center space-y-4">
-                  <ChartBarIcon className="w-16 h-16 mx-auto text-blue-600" />
-                  <h2 className="text-2xl font-bold text-gray-900">Welcome to Financial AI Agent!</h2>
-                  <p className="text-gray-600">
-                    I'm your personal financial assistant. I can help you understand your spending patterns,
-                    analyze transactions, and provide insights about your finances.
-                  </p>
-                  
-                  <div className="pt-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Try these examples:</h3>
-                    <div className="grid grid-cols-1 gap-2">
-                      {exampleQueries.map((query, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleExampleClick(query)}
-                          className="text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm text-gray-700 hover:text-blue-700 transition-colors border border-gray-200 hover:border-blue-300"
-                        >
-                          {query}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+              <div className="text-center space-y-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+                  <SparklesIcon className="w-9 h-9 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-semibold text-gray-900">Financial AI Assistant</h1>
+                  <p className="text-lg text-gray-600 max-w-lg mx-auto">
+                    Ask me anything about your finances. I can analyze spending, track income, and provide personalized insights.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="w-full max-w-2xl space-y-3">
+                <p className="text-sm font-medium text-gray-500">Try asking:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {exampleQueries.map((query, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleExampleClick(query)}
+                      className="group text-left px-5 py-4 bg-white hover:bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-all duration-200 hover:shadow-sm"
+                    >
+                      <p className="text-sm text-gray-700 group-hover:text-gray-900">{query}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Messages */}
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                  <SparklesIcon className="w-5 h-5 text-white" />
+          <div className="space-y-6 py-4">
+            {messages.map((message, index) => (
+              <div key={index} className="space-y-2">
+                {/* Role Label */}
+                <div className={`flex items-center gap-2 px-1 ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}>
+                  {message.role === 'assistant' ? (
+                    <>
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <SparklesIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">Assistant</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium text-gray-900">You</span>
+                      <div className="w-6 h-6 rounded-lg bg-gray-700 flex items-center justify-center">
+                        <span className="text-xs font-semibold text-white">You</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
-              
-              <div
-                className={`max-w-2xl px-4 py-3 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </div>
-
-              {message.role === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Loading indicator */}
-          {loading && (
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <SparklesIcon className="w-5 h-5 text-white" />
-              </div>
-              <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                
+                {/* Message Content */}
+                <div className={`px-1 ${message.role === 'user' ? 'flex justify-end' : ''}`}>
+                  <div className={`prose prose-sm max-w-none ${
+                    message.role === 'assistant' ? 'text-gray-800' : 'text-gray-900'
+                  }`}>
+                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ))}
 
-          <div ref={messagesEndRef} />
+            {/* Loading indicator */}
+            {loading && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <SparklesIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Assistant</span>
+                </div>
+                <div className="px-1">
+                  <div className="flex gap-1.5">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-2">
-            <input
-              type="text"
+      {/* Input Area - Fixed at bottom */}
+      <div className="border-t border-gray-200 bg-white">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me about your finances..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={handleKeyPress}
+              placeholder="Ask about your finances..."
+              rows={1}
               disabled={loading}
+              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 placeholder-gray-400"
+              style={{ minHeight: '52px', maxHeight: '200px' }}
             />
-            <Button
+            <button
               onClick={handleSendMessage}
               disabled={loading || !input.trim()}
-              className="px-6 py-3"
+              className="absolute right-2 bottom-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              <PaperAirplaneIcon className="w-5 h-5" />
-            </Button>
+              <PaperAirplaneIcon className="w-5 h-5 text-white" />
+            </button>
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            Powered by Google Gemini AI • Press Enter to send
+            Press Enter to send • Shift + Enter for new line
           </p>
         </div>
       </div>

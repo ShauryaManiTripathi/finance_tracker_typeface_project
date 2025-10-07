@@ -317,7 +317,7 @@ Authorization: Bearer <jwt_token>
 
 ### Receipt Extraction (Gemini Vision)
 
-**Model**: `gemini-2.0-flash-exp` (primary) / `gemini-1.5-flash` (fallback)
+**Model**: `gemini-2.0-flash-exp` (primary) / `gemini-2.5-flash` (fallback)
 
 **Input**: Image file (JPEG, PNG, WebP)
 
@@ -356,7 +356,7 @@ If any field is unclear, set it to null. Return valid JSON only.
 
 ### Statement Extraction (Gemini Multimodal)
 
-**Model**: `gemini-2.0-flash-exp` (primary) / `gemini-1.5-flash` (fallback)
+**Model**: `gemini-2.0-flash-exp` (primary) / `gemini-2.5-flash` (fallback)
 
 **Input**: PDF file
 

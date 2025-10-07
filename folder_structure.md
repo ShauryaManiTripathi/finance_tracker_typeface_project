@@ -314,7 +314,7 @@ NODE_ENV="development"
 # Google Gemini API
 GEMINI_API_KEY="your-gemini-api-key"
 GEMINI_DEFAULT_MODEL="gemini-2.0-flash-exp"
-GEMINI_FALLBACK_MODEL="gemini-1.5-flash"
+GEMINI_FALLBACK_MODEL="gemini-2.5-flash"
 
 # Upload Configuration
 MAX_RECEIPT_SIZE_MB=10
