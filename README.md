@@ -368,68 +368,6 @@ npm run db:migrate   # Run Prisma migrations only (for external DB)
 npm run db:seed      # Populate with sample data
 ```
 
-### Testing
-```bash
-npm test             # Run all tests
-npm run test:api     # Run backend tests only
-```
-
-### Production
-```bash
-npm run build        # Build both apps for production
-```
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-The application uses a **unified `.env` file at the root directory** for both frontend and backend.
-
-**Required Variables:**
-```bash
-# Database (choose one)
-# For Docker Compose:
-DATABASE_URL="postgresql://finance_user:finance_password@localhost:5432/finance_db"
-# For external PostgreSQL:
-# DATABASE_URL="postgresql://user:password@your-host:5432/your-database"
-
-# JWT Authentication
-JWT_SECRET="your-super-secure-jwt-secret-change-in-production"
-JWT_EXPIRES_IN="7d"
-
-# Google Gemini AI (required for receipt/statement processing)
-GEMINI_API_KEY="your-gemini-api-key-from-aistudio"
-GEMINI_DEFAULT_MODEL="gemini-2.0-flash-exp"
-
-# Frontend API URL
-VITE_API_BASE_URL="http://localhost:3001/api"
-```
-
-**Optional Variables:**
-```bash
-# Server
-PORT=3001
-NODE_ENV="development"
-CORS_ORIGIN="http://localhost:5173"
-
-# Upload Limits
-MAX_RECEIPT_SIZE_MB=10
-MAX_STATEMENT_SIZE_MB=20
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-```
-
-**Get Gemini API Key:**
-1. Visit https://aistudio.google.com/app/apikey
-2. Sign in with Google account
-3. Click "Create API Key"
-4. Copy and paste into `.env` file
-
----
 
 ## 🧪 Testing
 
