@@ -73,10 +73,18 @@ All responses follow this structure:
                     │ (Analytics) │
                     └─────────────┘
                            │
-                    ┌─────────────┐
-                    │   Uploads   │
-                    │ (AI Extract)│
-                    └─────────────┘
+                    ┌──────────────┐
+                    │   Uploads    │
+                    │ (AI Extract) │
+                    └──────────────┘
+                           │
+                    ┌──────────────┐
+                    │  AI Agent 🤖 │◀────────────┐
+                    │(Conversational│             │
+                    │   Assistant)  │             │
+                    └───────┬───────┘             │
+                            └─────────────────────┘
+                    (Can access Stats, Transactions, Categories)
 ```
 
 ### Data Flow: Upload Module (AI-Powered)
@@ -119,10 +127,11 @@ All responses follow this structure:
 4. [Transaction Endpoints](#transaction-endpoints)
 5. [Statistics Endpoints](#statistics-endpoints)
 6. [Upload Endpoints](#upload-endpoints)
-7. [Common Response Formats](#common-response-formats)
-8. [Error Codes](#error-codes)
-9. [Best Practices](#best-practices)
-10. [Code Examples](#code-examples)
+7. [AI Agent Endpoints](#ai-agent-endpoints) 🆕
+8. [Common Response Formats](#common-response-formats)
+9. [Error Codes](#error-codes)
+10. [Best Practices](#best-practices)
+11. [Code Examples](#code-examples)
 
 ---
 
@@ -873,6 +882,304 @@ Delete a transaction.
 |--------|-----------|----------|
 | 404 | Transaction not found or not owned | `{ "success": false, "error": "Transaction not found" }` |
 | 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "..." }` |
+
+---
+
+## AI Agent Endpoints
+
+### Overview
+The AI Agent is a conversational assistant powered by Google Gemini that can analyze your financial data, answer questions, and provide insights using natural language. It has access to all your stats and transaction APIs through function calling.
+
+**Base Path:** `/api/agent`
+
+**Features:**
+- 🤖 Natural language understanding
+- 📊 Access to all financial APIs (stats, transactions, categories)
+- 📅 Smart date range calculations ("last 30 days", "this month", etc.)
+- 💬 Conversation history support
+- 🔄 Multi-turn function calling (up to 5 iterations)
+- 🎯 Context-aware responses
+
+### Architecture Flow
+```
+User Query
+    └─▶ AI Agent analyzes intent
+        └─▶ Determines required functions
+            ├─▶ calculateDateRange (if relative dates)
+            ├─▶ getSummary (for totals)
+            ├─▶ getExpensesByCategory (for breakdowns)
+            ├─▶ getExpensesOverTime (for trends)
+            └─▶ getTransactions (for details)
+                └─▶ Synthesizes response
+                    └─▶ Returns natural language answer
+```
+
+---
+
+### POST /agent/chat
+Chat with the AI financial assistant.
+
+**Authentication:** Required  
+**Rate Limit:** Subject to Gemini API limits (~50 req/min)
+
+#### Request Body
+```json
+{
+  "message": "What's my total spending this month?",
+  "history": [
+    {
+      "role": "user",
+      "parts": [{ "text": "Previous question" }]
+    },
+    {
+      "role": "model",
+      "parts": [{ "text": "Previous response" }]
+    }
+  ]
+}
+```
+
+#### Parameters
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message` | string | ✅ | User's question or command |
+| `history` | array | ❌ | Conversation history for context (Gemini format) |
+
+#### Response
+```json
+{
+  "success": true,
+  "data": {
+    "response": "Your total spending this month is ₹45,250. Your top categories are Housing (₹22,000), Food (₹12,000), and Transportation (₹8,500).",
+    "history": [
+      {
+        "role": "user",
+        "parts": [{ "text": "What's my total spending this month?" }]
+      },
+      {
+        "role": "model",
+        "parts": [{ "text": "Your total spending this month is ₹45,250..." }]
+      }
+    ],
+    "functionCalls": 2
+  }
+}
+```
+
+#### Response Fields
+| Field | Type | Description |
+|-------|------|-------------|
+| `response` | string | AI-generated natural language response |
+| `history` | array | Updated conversation history (include in next request for context) |
+| `functionCalls` | number | Number of function calls made to answer the query |
+
+#### Example Queries
+
+**Financial Summary:**
+```bash
+curl -X POST http://localhost:3001/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "message": "Show me my income vs expenses for last 30 days"
+  }'
+```
+
+**Category Analysis:**
+```bash
+curl -X POST http://localhost:3001/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "message": "What are my top 3 expense categories?"
+  }'
+```
+
+**Time-based Analysis:**
+```bash
+curl -X POST http://localhost:3001/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "message": "How much did I spend on housing last month?"
+  }'
+```
+
+**Transaction Search:**
+```bash
+curl -X POST http://localhost:3001/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "message": "Show me all transactions over ₹10,000 in the last 7 days"
+  }'
+```
+
+**With Conversation History:**
+```bash
+curl -X POST http://localhost:3001/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "message": "What about food expenses?",
+    "history": [
+      {
+        "role": "user",
+        "parts": [{ "text": "Show my spending by category" }]
+      },
+      {
+        "role": "model",
+        "parts": [{ "text": "Your spending by category..." }]
+      }
+    ]
+  }'
+```
+
+#### Success Response Example
+```json
+{
+  "success": true,
+  "data": {
+    "response": "In the last 30 days (September 8 to October 8, 2025), your total income was ₹85,000 and your total expenses were ₹45,250. This leaves you with a net balance of ₹39,750. Your largest expense category was Housing at ₹22,000 (48.6% of total expenses).",
+    "history": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Show me my income vs expenses for last 30 days"
+          }
+        ]
+      },
+      {
+        "role": "model",
+        "parts": [
+          {
+            "functionCall": {
+              "name": "calculateDateRange",
+              "args": { "daysAgo": 30 }
+            }
+          }
+        ]
+      },
+      {
+        "role": "function",
+        "parts": [
+          {
+            "functionResponse": {
+              "name": "calculateDateRange",
+              "response": {
+                "startDate": "2025-09-08",
+                "endDate": "2025-10-08"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "role": "model",
+        "parts": [
+          {
+            "functionCall": {
+              "name": "getSummary",
+              "args": {
+                "startDate": "2025-09-08",
+                "endDate": "2025-10-08"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "role": "function",
+        "parts": [
+          {
+            "functionResponse": {
+              "name": "getSummary",
+              "response": {
+                "income": 85000,
+                "expenses": 45250,
+                "net": 39750
+              }
+            }
+          }
+        ]
+      },
+      {
+        "role": "model",
+        "parts": [
+          {
+            "text": "In the last 30 days... [full response]"
+          }
+        ]
+      }
+    ],
+    "functionCalls": 2
+  }
+}
+```
+
+#### Error Responses
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Missing message | `{ "success": false, "error": "Validation Error", "message": "Message is required..." }` |
+| 401 | Missing/invalid token | `{ "error": "Unauthorized", "message": "User not authenticated" }` |
+| 500 | Gemini API error | `{ "success": false, "error": "Internal Server Error", "message": "Failed to process..." }` |
+
+#### Agent Capabilities
+
+**Available Functions (Auto-invoked by AI):**
+
+1. **calculateDateRange(daysAgo: number)**
+   - Calculates exact date ranges for relative queries
+   - Examples: "last 30 days" → Sept 8 to Oct 8
+
+2. **getSummary(startDate?, endDate?)**
+   - Returns total income, expenses, and net balance
+   - Optional date filtering
+
+3. **getExpensesByCategory(startDate?, endDate?)**
+   - Breakdown of expenses by category
+   - Sorted by amount (highest first)
+
+4. **getExpensesOverTime(interval, startDate?, endDate?)**
+   - Spending trends over time
+   - Intervals: daily, weekly, monthly
+
+5. **getTransactions(filters, pagination)**
+   - Detailed transaction list with filters
+   - Supports: type, category, date range, amount range, search
+
+#### Best Practices
+
+**For Accurate Responses:**
+- ✅ Be specific with dates: "last 30 days" vs "this month"
+- ✅ Include context: "Compare my spending last month vs this month"
+- ✅ Ask one thing at a time for faster responses
+- ✅ Use conversation history for follow-up questions
+
+**Performance Tips:**
+- 🚀 Simple queries (1 function call): ~2-3 seconds
+- 🚀 Complex queries (multiple functions): ~5-8 seconds
+- 🚀 Max 5 function calls per query (prevents infinite loops)
+
+**Example Conversations:**
+
+```
+User: "What's my total spending this month?"
+Agent: [Calls getSummary] → "Your total spending this month is ₹45,250."
+
+User: "What about last month?"
+Agent: [Calls getSummary with last month dates] → "Last month you spent ₹38,900."
+
+User: "Which month was higher?"
+Agent: [Uses conversation history] → "This month (₹45,250) was higher than last month (₹38,900) by ₹6,350."
+```
+
+#### Known Limitations
+- ⚠️ Subject to Gemini API rate limits (~50 req/min shared)
+- ⚠️ Max 5 function call iterations to prevent loops
+- ⚠️ Requires valid Gemini API key in environment
+- ⚠️ Conversation history not persisted (client-side only)
 
 ---
 

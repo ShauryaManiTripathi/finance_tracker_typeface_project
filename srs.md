@@ -169,6 +169,119 @@ F8. Statement Import via Gemini (Bonus)
 F9. Pagination Support Across Lists (Bonus)
 - Description: All list endpoints support page and pageSize; respond with total count.
 
+F10. AI Financial Assistant (Conversational Agent) 🆕
+- Description: An intelligent conversational AI agent powered by Google Gemini that can answer financial queries, analyze spending patterns, and provide insights using natural language. The agent has access to all stats and transaction APIs via function calling.
+
+- Capabilities:
+  - Natural Language Understanding: Understands queries like "What's my total spending this month?" or "Show me my top 3 expense categories"
+  - Function Calling: Agent can call 5 backend functions to fetch real-time financial data
+  - Smart Date Handling: Interprets relative dates ("last 30 days", "this month", "last quarter") accurately
+  - Conversation Context: Maintains conversation history for follow-up questions
+  - Multi-Turn Interactions: Can ask clarifying questions or provide additional context
+
+- Available Functions:
+  1. **calculateDateRange(daysAgo)**: Calculates exact date ranges for queries like "last X days"
+     - Input: Number of days (e.g., 30)
+     - Output: { startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD" }
+  
+  2. **getSummary(startDate, endDate)**: Gets income and expense totals for a period
+     - Input: Date range (optional)
+     - Output: { totalIncome, totalExpense, balance, transactionCount }
+  
+  3. **getExpensesByCategory(startDate, endDate)**: Breakdown of expenses by category
+     - Input: Date range (optional)
+     - Output: Array of { category, amount, percentage }
+  
+  4. **getExpensesOverTime(interval, startDate, endDate)**: Spending trends over time
+     - Input: interval ('daily' | 'weekly' | 'monthly'), date range (optional)
+     - Output: Array of { date, totalIncome, totalExpense }
+  
+  5. **getTransactions(filters, pagination)**: Detailed transaction records with filters
+     - Input: type, categoryId, startDate, endDate, minAmount, maxAmount, page, pageSize
+     - Output: { transactions[], total, page, pageSize, totalPages }
+
+- User Interactions:
+  - Chat Interface: Clean, centered layout (max-width 768px) with auto-expanding textarea
+  - Message History: Shows conversation between user and AI with role labels
+  - Example Queries: Welcome screen displays 4 example queries to guide users
+  - Loading States: Animated loading indicator during AI processing
+  - Error Handling: Graceful error messages if API calls fail
+
+- System Behavior:
+  - Authentication Required: Agent only accesses authenticated user's data
+  - Function Call Limit: Maximum 5 function calls per query to prevent infinite loops
+  - Response Time: Typically 2-8 seconds depending on query complexity
+  - Data Privacy: All queries and responses are scoped to the authenticated user
+  - Conversation Persistence: History maintained during session (not persisted to DB)
+
+- Technical Implementation:
+  - Model: Google Gemini 1.5 Flash (fast, cost-effective, excellent for function calling)
+  - System Instructions: Detailed rules for date handling, function usage, and response formatting
+  - Function Execution: Iterative loop that handles multi-turn function calling
+  - Type Safety: Uses JSON schemas for function parameters
+  - Error Recovery: Handles Prisma errors, invalid dates, and API failures gracefully
+
+- Example Queries (Supported):
+  - "What's my total spending this month?"
+  - "Show me my top 3 expense categories"
+  - "How much did I spend on food last week?"
+  - "Compare my income vs expenses for last 30 days"
+  - "What were my largest expenses in September?"
+  - "How is my spending trending over time?"
+  - "Show me all transactions over $100"
+  - "What was my balance last quarter?"
+
+- System Instructions (Key Rules):
+  - Always call calculateDateRange() FIRST for relative date queries
+  - Call each function ONLY ONCE per query
+  - Immediately provide response after receiving function results
+  - Do NOT repeat function calls unnecessarily
+  - Use exact dates returned by calculateDateRange
+  - Provide clear, concise responses with numbers formatted with currency
+  - If data is insufficient, suggest what the user can try
+
+- Acceptance Criteria:
+  - ✅ Agent responds to financial queries with accurate data
+  - ✅ Date calculations are exact ("last 30 days" = exactly 30 days)
+  - ✅ Only authenticated user's data is accessed
+  - ✅ Function calls limited to 5 per query (prevents infinite loops)
+  - ✅ Conversation history maintained for follow-up questions
+  - ✅ UI is clean, professional, and easy to use
+  - ✅ Loading states indicate AI is processing
+  - ✅ Error messages are user-friendly
+  - ✅ Response time under 10 seconds for complex queries
+
+- API Endpoint:
+  - POST /api/agent/chat
+    - Headers: Authorization: Bearer {jwt}
+    - Body: { message: string, history?: ChatMessage[] }
+    - Response: { response: string, history: ChatMessage[], functionCalls: number }
+
+- UI Routes:
+  - /agent - Main chat interface
+  - Navigation: "AI Agent" in sidebar with SparklesIcon
+
+- Performance Metrics:
+  - Simple queries (1 function): ~2-3 seconds
+  - Date + summary queries: ~4-5 seconds
+  - Complex analysis (3 functions): ~6-8 seconds
+
+- Known Limitations:
+  - Conversation history not persisted (clears on page refresh)
+  - No streaming responses (full response returned at once)
+  - English language only
+  - No markdown formatting in responses
+  - Cannot modify data (read-only access)
+
+- Future Enhancements:
+  - Streaming responses for better UX
+  - Conversation persistence in database
+  - Markdown rendering (bold, lists, tables)
+  - Voice input support
+  - Multi-language support
+  - Budget recommendations based on patterns
+  - Anomaly detection ("You spent 3x more than usual")
+
 5) Data Model
 Core Entities (Relational DB; example types given with Prisma-like notation)
 - User
