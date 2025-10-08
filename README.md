@@ -52,6 +52,8 @@ cp .env.example .env
 **Option A: Using Docker Compose (Recommended for local development)**
 ```bash
 npm run db:setup
+# if above command fails, usually on windows, then try:
+npm run db:setup2
 ```
 This will:
 - Start PostgreSQL in Docker (port 5432)
