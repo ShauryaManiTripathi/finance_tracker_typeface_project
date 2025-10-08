@@ -17,7 +17,7 @@
 
 ---
 
-# 🎉 Finance Tracker - Live on HTTPS! - slight slow due to USA server and 1 core instance - its hosting posgres(docker) as well as server
+## 🎉 Finance Tracker - Live on HTTPS! - slight slow due to USA server and 1 core instance - its hosting posgres(docker) as well as server
 
 **🚀 [https://finance-tracker.shaurya.codes](https://finance-tracker.shaurya.codes)**
 
