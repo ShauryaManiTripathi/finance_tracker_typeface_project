@@ -115,29 +115,6 @@ npm test -- --watch
 ### Test Coverage
 - Unit tests for validation logic
 - Integration tests for API endpoints
-- Test fixtures for receipts and statements
-
-### Test Database
-Tests use a separate database on port 5433 (configured in `.env.test`)
-
-### Sample Files for Testing
-The `SampleFiles/` folder contains example documents you can use to test the upload and import features:
-- **`Bus_ticket.jpg`** - Single bus ticket receipt (tests receipt extraction)
-- **`Petrol_invoice.png`** - Petrol station invoice (tests invoice processing)
-- **`statement1.pdf`** - Bank statement with multiple transactions (tests bulk import)
-- **`statement2.pdf`** - Another bank statement example (tests duplicate detection)
-
-**Quick Test Flow:**
-1. Register and login to the app
-2. Navigate to "Import" page
-3. Upload `Bus_ticket.jpg` → See single transaction extracted
-4. Upload `statement1.pdf` → See multiple transactions in preview table
-5. Edit, select, and import transactions
-6. Check Dashboard for charts and summaries
-
----
-
-
 
 ## 📋 Project Overview
 
