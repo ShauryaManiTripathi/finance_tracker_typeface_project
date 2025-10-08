@@ -17,6 +17,13 @@
 
 ---
 
+# Demo Video
+
+[Watch the demo video](https://www.loom.com/share/1c7422e9c422445489b6d98a81c777ce?sid=ce802a4c-cbab-4db7-8967-c7cf178bbe7b)
+
+
+---
+
 ## 🎉 Finance Tracker - Live on HTTPS! - slight slow due to USA server and 1 core instance - its hosting posgres(docker) as well as server
 
 **🚀 [https://finance-tracker.shaurya.codes](https://finance-tracker.shaurya.codes)**
