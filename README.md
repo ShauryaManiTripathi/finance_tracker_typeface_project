@@ -15,6 +15,11 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ed)](https://www.docker.com/)
 [![Jest](https://img.shields.io/badge/Jest-Testing-c21325)](https://jestjs.io/)
 
+---
+
+# 🎉 Finance Tracker - Live on HTTPS!
+
+**🚀 [https://finance-tracker.shaurya.codes](https://finance-tracker.shaurya.codes)**
 
 ---
 
