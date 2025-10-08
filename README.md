@@ -580,15 +580,6 @@ npx prisma migrate dev --name your_migration_name
 
 ---
 
-## 📚 Additional Documentation
-
-- **[srs.md](./srs.md)** - Complete Software Requirements Specification
-- **[API.md](./API.md)** - Detailed API endpoint documentation
-- **[folder_structure.md](./folder_structure.md)** - Project structure breakdown
-- **[ProgressTracks/](./ProgressTracks/)** - Implementation progress logs
-- **[task.md](./task.md)** - Original assignment requirements
-
----
 
 ## 🎓 Assignment Compliance
 
